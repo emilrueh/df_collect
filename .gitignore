@@ -1,0 +1,6 @@
+.env
+src/discontinued/
+geckodriver.log
+venv/
+__pycache__/
+```
