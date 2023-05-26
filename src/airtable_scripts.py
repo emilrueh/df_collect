@@ -72,7 +72,7 @@ def fetch_existing_records():
         "Content-Type": "application/json",
     }
 
-    existing_records = set()
+    existing_records = {}
     offset = None
     try:
         while True:
@@ -89,7 +89,9 @@ def fetch_existing_records():
                 records = data.get("records", [])
                 if not records:  # No existing records
                     break
-                existing_records.update(record["fields"]["Name"] for record in records)
+                existing_records.update(
+                    {record["fields"]["Name"]: record for record in records}
+                )
                 if "offset" in data:
                     offset = data["offset"]
                 else:
@@ -122,16 +124,30 @@ def csv_to_airtable(csv_filepath):
 
         for row in reader:
             counter += 1
-            data = {"fields": transform_data(row)}
+            transformed_row = transform_data(row)
+            data = {"fields": transformed_row}
 
-            # Check for duplicate records based on the "Name" field
-            if data["fields"]["Name"] in existing_records:
-                print(f"Skipping duplicate record: {data['fields']['Name']}")
-                continue
+            # Check for existing records based on the "Link" field
+            existing_record = existing_records.get(data["fields"]["Link"])
 
-            response = requests.post(
-                AIRTABLE_API_URL, headers=headers, data=json.dumps(data)
-            )
+            if existing_record:
+                # Only update existing record if there are changes
+                if transformed_row != existing_record["fields"]:
+                    response = requests.patch(
+                        f"{AIRTABLE_API_URL}/{existing_record['id']}",
+                        headers=headers,
+                        data=json.dumps(data),
+                    )
+                    print(f"Updating record: {data['fields']['Link']}")
+                else:
+                    print(f"Skipping record with no changes: {data['fields']['Link']}")
+                    continue
+            else:
+                # Create new record
+                response = requests.post(
+                    AIRTABLE_API_URL, headers=headers, data=json.dumps(data)
+                )
+                print(f"Creating new record: {data['fields']['Name']}")
 
             if response.status_code != 200:
                 print(f"Error in data upload: {response.text}")

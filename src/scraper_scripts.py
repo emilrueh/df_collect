@@ -158,7 +158,7 @@ def scrape_website(url, keywords, event_entries):
             try:
                 event_description = browser.find_element(
                     By.XPATH,
-                    "/html/body/div[1]/div[2]/div[2]/div[2]/main/div[3]/div[1]/div/div[1]/div/div[1]/div[2]/div[2]/p",
+                    '//*[@id="event-details"]',
                 ).text
 
             except NoSuchElementException:
@@ -270,7 +270,7 @@ def scrape_website(url, keywords, event_entries):
                 "Date": event_start_date,
                 "Time": event_start_time,
                 "Price": event_price.title(),
-                "Link": event_url,
+                "Link": event,
                 "Keyword": word,
             }
 
@@ -279,7 +279,8 @@ def scrape_website(url, keywords, event_entries):
 
             # dict of dict
             # Store the event_data dictionary in event_data_dict, using the event title as the key
-            event_data_dict[event[-9:]] = event_data
+            event_id = event.split("/")[-1]
+            event_data_dict[event_id] = event_data
 
         # dict of dict of dict
         # Store the results for this keyword
