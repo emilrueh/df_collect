@@ -1,0 +1,10 @@
+{
+    "AIRTABLE_API_TOKEN": "",
+    "AIRTABLE_API_URL": "",
+    "OPENAI_API_KEY": "",
+    "URL_TO_SCRAPE": "",
+    "PATH_TO_CSV": "",
+    "KEYWORDS": [],
+    "NUMBER_OF_EVENTS_PER_KEYWORD": 1,
+    "AI_PROMPT": ""
+}

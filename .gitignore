@@ -4,6 +4,7 @@ working_data/
 settings.json
 notebooks/
 geckodriver.log
+scraper_backup.json
 venv/
 __pycache__/
 ```
