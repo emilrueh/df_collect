@@ -1,8 +1,9 @@
 .env
-src/discontinued/
-data/
+discontinued/
+working_data/
+notebooks/
 geckodriver.log
 venv/
 __pycache__/
-TEST_NB.ipynb
+settings.py
 ```

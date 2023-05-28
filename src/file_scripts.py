@@ -1,6 +1,6 @@
-# CSV imports
 import csv
 import pandas as pd
+import json
 
 
 # to CSV function
@@ -45,3 +45,34 @@ def save_to_csv(data, filename):
 def load_from_csv(filename):
     df = pd.read_csv(filename)
     return df
+
+
+def delete_csv_duplicates(file_path, columns_to_compare=None):
+    data = pd.read_csv(file_path)
+
+    # Keep one instance of each event with the same name, remove others
+    data_no_duplicates = data.drop_duplicates(subset=columns_to_compare, keep="first")
+
+    data_no_duplicates.to_csv(
+        f"{file_path.replace('.csv', '')}_no-duplicates.csv", index=False
+    )
+
+
+def json_read(json_filename):
+    # Specify the filename of the JSON backup file
+    # Load JSON data from the file
+    with open(json_filename, "r") as file:
+        json_data = file.read()
+
+    # Convert the JSON data back into the dictionary
+    json_dict = json.loads(json_data)
+
+    return json_dict
+
+
+def json_save(data, filename):
+    # backup
+    json_data = json.dumps(data)
+    # Save the JSON string to a file
+    with open(filename, "w") as file:
+        file.write(json_data)

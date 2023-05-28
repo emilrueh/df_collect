@@ -1,83 +1,107 @@
 from src.scraper_scripts import scrape_website
-from src.csv_scripts import save_to_csv, load_from_csv
+from src.file_scripts import (
+    save_to_csv,
+    load_from_csv,
+    delete_csv_duplicates,
+    json_read,
+)
 from src.airtable_scripts import csv_to_airtable
-from src.summary_openai import call_openai
-import os
+from src.openai_scripts import openai_loop_over_column_and_add
+from src.settings_scripts import set_scraper_settings
 
-# function parameters
-url_setting = "https://www.meetup.com/"
-
-keywords_setting = [
-    "founder",
-    "invest",
-    "funding",
-    "entrepreneur",
-    "venture capital",
-    "startup",
-    "marketing",
-    "sales",
-    "network",
-    "web3",
-    "crypto",
-    "ai",
-    "tech",
-    "product",
-    "code",
-    "real estate",
-    "conference",
-]
-
-entry_settings = 100
-
-# openai settings
-prompt = "Summarize the following event description in one short and concise sentence. Below the sentence add three bullet points without any emojis. Do not write any headings:\n\n"
-text = None  # this is the long description from each event
-
-# csv settings
-csv_file_name = "./data/Events_TESTING.csv"
-
-# Get current working directory for filepath
-cwd = os.getcwd()
-csv_file_path = os.path.join(cwd, csv_file_name)
+import traceback
+import sys
 
 
 # main function calling functions
 def main():
-    # scraper script
-    keyword_results_dict = scrape_website(url_setting, keywords_setting, entry_settings)
+    # settings["AIRTABLE_API_TOKEN"]
+    # settings["AIRTABLE_API_URL"]
+    # settings["OPENAI_API_KEY"]
+    # settings["URL_TO_SCRAPE"]
+    # settings["PATH_TO_CSV"]
+    # settings["KEYWORDS"]
+    # settings["NUMBER_OF_EVENTS_PER_KEYWORD"]
+    # settings["AI_PROMPT"]
 
-    # ###
-    # OPENAI IF NOT FROM CSV
-    # openai api call to summarize
-    # openai api call to summarize
-    for keyword, event_data_dict in keyword_results_dict.items():
-        for event_id, event in event_data_dict.items():
-            event["Summary"] = call_openai(prompt, event["Long Description"])
+    try:
+        # SETTINGS
+        settings = set_scraper_settings(
+            ai_prompt="Summarize the following event description in one short and concise sentence. Do not include specific information, only focus on the core idea and have an excited tone to it. Do not write any headings. The sentence can be at maximum 125 characters long:",
+            keywords=[
+                "founder",
+                "invest",
+                "funding",
+                "entrepreneur",
+                "venture capital",
+                "startup",
+                "marketing",
+                "sales",
+                "network",
+                "web3",
+                "crypto",
+                "ai",
+                "tech",
+                "product",
+                "code",
+                "real estate",
+                "conference",
+            ],
+            number_of_events_per_keyword=100,
+        )
 
-    # ###
+        # # scraper scripts
+        # scraper_return = scrape_website(
+        #     url=settings["URL_TO_SCRAPE"],
+        #     keywords=settings["KEYWORDS"],
+        #     event_entries=settings["NUMBER_OF_EVENTS_PER_KEYWORD"],
+        # )
 
-    # csv script
-    save_to_csv(keyword_results_dict, csv_file_name)
-    scraped_data_csv = load_from_csv(csv_file_name)
+        # json scripts
+        keyword_results_dict = json_read(
+            json_filename="scraper_backup.json",
+        )
 
-    # print(scraped_data_csv.head())  # to evaluate the csv
+        # csv scripts
+        save_to_csv(data=keyword_results_dict, filename=settings["PATH_TO_CSV"])
+        load_from_csv(filename=settings["PATH_TO_CSV"])
 
-    # # ###
-    # # OPENAI IF FROM CSV
-    # df = load_from_csv(csv_file_name)
+        # checking for duplicates
+        delete_csv_duplicates(
+            file_path=settings["PATH_TO_CSV"],
+            columns_to_compare=["Name", "Date", "Time", "Location"],
+        )
 
-    # # openai api call to summarize
-    # for index, row in df.iterrows():
-    #     print(f"\nIteration: {index} | {row['Link']}")
-    #     print(f"Long Description: {row['Long Description']}")
-    #     df.loc[index, "Summary"] = call_openai(prompt, row["Long Description"])
-    #     print(f'CSV: {df.loc[index, "Summary"]}\n')
+        # openai scripts
+        openai_loop_over_column_and_add(
+            api_key=settings["OPENAI_API_KEY"],
+            prompt=settings["AI_PROMPT"],
+            df=load_from_csv(settings["PATH_TO_CSV"]),
+            column_for_input="Long Description",
+            column_for_output="Summary",
+            path_to_csv=settings["PATH_TO_CSV"],
+        )
 
-    # df.to_csv(csv_file_path, index=False)
-    # # ###
+        # airtable scripts
+        csv_to_airtable(
+            airtable_api_token=settings["AIRTABLE_API_TOKEN"],
+            airtable_api_url=settings["AIRTABLE_API_URL"],
+            csv_filepath=settings["PATH_TO_CSV"],
+        )
+    except Exception as e:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        traceback_details = traceback.extract_tb(exc_traceback)
 
-    # airtable script
-    csv_to_airtable(csv_file_path)
+        fname = traceback_details[-1].filename
+        line_number = traceback_details[-1].lineno
+        exc_type_name = exc_type.__name__
+
+        print(
+            f"\nERROR\n------\n{exc_type_name} at line: {line_number}\n{fname}\n{e}\n------\n"
+        )
+        view_traceback = input("Do you want to see the full error message? (y/n) ")
+        if view_traceback == "y":
+            print(f"\n{traceback_details}\n")
 
 
 # Run the main function
