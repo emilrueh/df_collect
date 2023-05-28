@@ -1,9 +1,9 @@
 .env
 discontinued/
 working_data/
+settings.json
 notebooks/
 geckodriver.log
 venv/
 __pycache__/
-settings.py
 ```
