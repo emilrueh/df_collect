@@ -46,4 +46,4 @@ Keyword
 
 The scraped data is returned as a nested dictionary, where the outer dictionary keys are the keywords and the inner dictionary keys are the event URLs.
 
-After scraping the data, the script will upload the data to Airtable using the csv_to_airtable function. You must provide your own Airtable API key and URL for this to work.
+After scraping the data the script will summarize the long description via the OpenAI API and then upload the data to Airtable using the csv_to_airtable function. You must provide your own Airtable API key and URL for this to work.

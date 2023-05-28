@@ -2,45 +2,6 @@
 import requests
 import json
 import csv
-import os
-from time import sleep
-from dotenv import load_dotenv
-
-
-# loading dotenv
-dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
-
-attempts = 3
-
-while attempts > 0:
-    load_dotenv(dotenv_path)
-
-    # Get environment variables
-    AIRTABLE_API_BASE_ID = os.getenv("AIRTABLE_API_BASE_ID")
-    AIRTABLE_API_TABLE_NAME = os.getenv("AIRTABLE_API_TABLE_NAME")
-    AIRTABLE_API_TOKEN = os.getenv("AIRTABLE_API_TOKEN")
-
-    AIRTABLE_API_URL = (
-        f"https://api.airtable.com/v0/{AIRTABLE_API_BASE_ID}/{AIRTABLE_API_TABLE_NAME}"
-    )
-
-    # check if no variables loaded
-    if (
-        not AIRTABLE_API_BASE_ID
-        or not AIRTABLE_API_TABLE_NAME
-        or not AIRTABLE_API_TOKEN
-    ):
-        print("One or more environment variables not found. Retrying...")
-        attempts -= 1
-        sleep(3)
-    else:
-        break
-
-# print error after three attempts
-if attempts == 0:
-    raise ValueError(
-        "Failed to load one or more environment variables after 3 attempts."
-    )
 
 
 # airtable functions
@@ -66,9 +27,9 @@ def transform_data(row):
     return transformed_row
 
 
-def fetch_existing_records():
+def fetch_existing_records(airtable_api_token, airtable_api_url):
     headers = {
-        "Authorization": "Bearer " + AIRTABLE_API_TOKEN,
+        "Authorization": "Bearer " + airtable_api_token,
         "Content-Type": "application/json",
     }
 
@@ -83,7 +44,7 @@ def fetch_existing_records():
                 if offset
                 else {}
             )
-            response = requests.get(AIRTABLE_API_URL, headers=headers, params=params)
+            response = requests.get(airtable_api_url, headers=headers, params=params)
             if response.status_code == 200:
                 data = response.json()
                 records = data.get("records", [])
@@ -98,17 +59,17 @@ def fetch_existing_records():
                     break
             else:
                 print(f"Error fetching existing records: {response.text}")
-                return set()  # Return an empty set
+                return {}  # Return an empty dictionary
     except Exception as e:
         print(f"Error fetching existing records: {str(e)}")
-        return set()  # Return an empty set
+        return {}  # Return an empty dictionary
 
     return existing_records
 
 
-def csv_to_airtable(csv_filepath):
+def csv_to_airtable(airtable_api_token, airtable_api_url, csv_filepath):
     headers = {
-        "Authorization": "Bearer " + AIRTABLE_API_TOKEN,
+        "Authorization": "Bearer " + airtable_api_token,
         "Content-Type": "application/json",
     }
 
@@ -116,7 +77,8 @@ def csv_to_airtable(csv_filepath):
 
     with open(csv_filepath, newline="", encoding="utf-8") as csvfile:
         reader = csv.DictReader(csvfile, delimiter=",")
-        existing_records = fetch_existing_records()
+        # function call
+        existing_records = fetch_existing_records(airtable_api_token, airtable_api_url)
 
         if existing_records is None:
             print("Failed to fetch existing records. Aborting upload.")
@@ -134,7 +96,7 @@ def csv_to_airtable(csv_filepath):
                 # Only update existing record if there are changes
                 if transformed_row != existing_record["fields"]:
                     response = requests.patch(
-                        f"{AIRTABLE_API_URL}/{existing_record['id']}",
+                        f"{airtable_api_url}/{existing_record['id']}",
                         headers=headers,
                         data=json.dumps(data),
                     )
@@ -145,7 +107,7 @@ def csv_to_airtable(csv_filepath):
             else:
                 # Create new record
                 response = requests.post(
-                    AIRTABLE_API_URL, headers=headers, data=json.dumps(data)
+                    airtable_api_url, headers=headers, data=json.dumps(data)
                 )
                 print(f"Creating new record: {data['fields']['Name']}")
 
@@ -153,5 +115,5 @@ def csv_to_airtable(csv_filepath):
                 print(f"Error in data upload: {response.text}")
             else:
                 print(
-                    f"{counter} Successfully uploaded record with id: {response.json()['id']}"
+                    f"\n{counter} Successfully uploaded record with id: {response.json()['id']}"
                 )

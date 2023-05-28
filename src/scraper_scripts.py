@@ -5,6 +5,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException
 import time
 
+from src.file_scripts import json_save
+
 
 # main loop function
 def scrape_website(url, keywords, event_entries):
@@ -14,9 +16,12 @@ def scrape_website(url, keywords, event_entries):
 
     processed_events_urls = set()
 
+    total_event_counter = 0
     # main loop
     # find search bar and enter the keywords
     for word in keywords:
+        # print(word)  # to see the progress of the script
+
         browser.get(url)  # Start from the fresh page for each keyword
         time.sleep(5)  # Let the page load
 
@@ -47,8 +52,6 @@ def scrape_website(url, keywords, event_entries):
                 By.XPATH, '//*[@id="search-keyword-input"]'
             )
         time.sleep(1)
-
-        print(word)  # to see the progress of the script
 
         search_bar.send_keys(word)
 
@@ -135,10 +138,18 @@ def scrape_website(url, keywords, event_entries):
         event_data_dict = {}
 
         # loop through event links and copy info
+        event_per_keyword_counter = 0
         for event in event_url_list:
             # If this event's URL is already in processed_events_urls, skip it
             if event in processed_events_urls:
                 continue
+
+            # progress tracker
+            event_per_keyword_counter += 1
+            total_event_counter += 1
+            print(
+                f"{word}: {event_per_keyword_counter} | Total: {total_event_counter} | {event}"
+            )
 
             browser.get(event)  # open event link
             time.sleep(5)
@@ -262,7 +273,11 @@ def scrape_website(url, keywords, event_entries):
                 "Tags": event_tags,
                 "People": "",
                 "Group Size": "",
-                "Long Description": event_description,
+                "Long Description": (
+                    event_description.replace("Details\n", "")
+                    if "Details\n" in event_description
+                    else event_description
+                ),
                 "Summary": "",
                 "Location": event_address,
                 "Venue": event_location,
@@ -287,5 +302,7 @@ def scrape_website(url, keywords, event_entries):
         keyword_results_dict[word] = event_data_dict
 
     browser.quit()
+
+    json_save(keyword_results_dict, "scraper_backup.json")
 
     return keyword_results_dict
