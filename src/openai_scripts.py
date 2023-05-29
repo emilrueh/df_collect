@@ -47,7 +47,7 @@ def openai_loop_over_column_and_add(
             prompt,
             row[column_for_input],
         )
-        print(f"\n{index} {row['Link']}\n{df.loc[index, column_for_output]}")
+        print(f"\n{index} | {df.loc[index, column_for_output]}")
 
     # save new df to csv
     df.to_csv(path_to_csv, index=False)

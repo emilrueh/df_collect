@@ -44,31 +44,11 @@ def set_scraper_settings(keywords, number_of_events_per_keyword, ai_prompt):
 
     if input("Do you want to view the settings? (y/n): ") == "y":
         print(
-            f"""
-    AIRTABLE_API_TOKEN: 
-    {AIRTABLE_API_TOKEN}
-
-    AIRTABLE_API_URL: 
-    {AIRTABLE_API_URL}
-
-    OPENAI_API_KEY: 
-    {OPENAI_API_KEY}
-
-    URL_TO_SCRAPE: 
-    {URL_TO_SCRAPE}
-
-    PATH_TO_CSV: 
-    {PATH_TO_CSV}
-
-    keywords: 
-    {keywords}
-
-    number_of_events_per_keyword: 
-    {number_of_events_per_keyword}
-
-    ai_prompt: 
-    {ai_prompt}
-    """
+            f"\nSETTINGS:\n------\n\nAIRTABLE_API_TOKEN:\n{AIRTABLE_API_TOKEN}\n\nAIRTABLE_API_URL:\n{AIRTABLE_API_URL}"
+            f"\n\nOPENAI_API_KEY:\n{OPENAI_API_KEY}\n\nURL_TO_SCRAPE:\n{URL_TO_SCRAPE}"
+            f"\n\nPATH_TO_CSV:\n{PATH_TO_CSV}\n\nkeywords:\n{keywords}"
+            f"\n\nNUMBER_OF_EVENTS_PER_KEYWORD:\n{number_of_events_per_keyword}"
+            f"\n\nAI_PROMPT:\n{ai_prompt}\n\n------\n"
         )
 
     # Define settings_dict
