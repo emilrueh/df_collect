@@ -8,4 +8,5 @@ scraper_backup.json
 venv/
 __pycache__/
 setup.py
+meetupsummary.egg-info/
 ```
