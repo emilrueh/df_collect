@@ -7,4 +7,5 @@ geckodriver.log
 scraper_backup.json
 venv/
 __pycache__/
+setup.py
 ```
