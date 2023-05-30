@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import pytest
 
-from src.file_scripts import delete_csv_duplicates
+from src.file_scripts import delete_csv_duplicates, manipulate_csv_data
 
 
 # file_scripts.py
@@ -54,3 +54,100 @@ def test_delete_csv_duplicates(input_file, columns_to_compare):
 
     # Clean (the temporary file)
     os.remove(output_file_path)
+
+
+@pytest.mark.parametrize(
+    "operations, expected_df",
+    [
+        (
+            [{"action": "add_column", "column_name": "NewColumn", "column_value": 42}],
+            pd.DataFrame({"NewColumn": [42, 42, 42, 42, 42]}),
+        ),
+        (
+            [
+                {
+                    "action": "add_column",
+                    "column_name": "NewColumn",
+                    "column_value": ["One", "Two", "Three", "Four", "Five"],
+                },
+                {"action": "lowercase", "column_name": "NewColumn"},
+            ],
+            pd.DataFrame({"NewColumn": ["one", "two", "three", "four", "five"]}),
+        ),
+        (
+            [
+                {
+                    "action": "add_column",
+                    "column_name": "NewColumn",
+                    "column_value": ["One", "Two", "Three", "Four", "Five"],
+                },
+                {"action": "lowercase", "column_name": "NewColumn"},
+            ],
+            pd.DataFrame({"NewColumn": ["one", "two", "three", "four", "five"]}),
+        ),
+        (
+            [
+                {
+                    "action": "add_column",
+                    "column_name": "NewColumn",
+                    "column_value": ["one", "two", "three", "four", "five"],
+                },
+                {"action": "uppercase", "column_name": "NewColumn"},
+            ],
+            pd.DataFrame({"NewColumn": ["ONE", "TWO", "THREE", "FOUR", "FIVE"]}),
+        ),
+    ],
+)
+def test_add_remove_and_modify_columns(operations, expected_df):
+    # ARRANGE
+    df = pd.DataFrame(index=range(5))  # DataFrame with 5 empty rows
+
+    # ACT
+    result_df = manipulate_csv_data("input.csv", None, operations, input_df=df)
+
+    # ASSERT
+    pd.testing.assert_frame_equal(result_df, expected_df)
+
+
+@pytest.mark.parametrize(
+    "operations, input_file, output_file, expected_output",
+    [
+        (
+            [
+                {
+                    "action": "substring",
+                    "column_name": "Month",
+                    "start_index": 0,
+                    "end_index": 3,
+                }
+            ],
+            "input.csv",
+            "output.csv",
+            ["Jan", "Feb", "Mar", "Apr", "May"],
+        ),
+        (
+            [
+                {
+                    "action": "substring",
+                    "column_name": "Month",
+                    "start_index": 1,
+                    "end_index": 2,
+                }
+            ],
+            "input.csv",
+            "output.csv",
+            ["a", "e", "a", "p", "a"],
+        ),
+    ],
+)
+def test_substring_operations(operations, input_file, output_file, expected_output):
+    # ARRANGE
+    df = pd.DataFrame({"Month": ["January", "February", "March", "April", "May"]})
+    df.to_csv(input_file, index=False)
+
+    # ACT
+    manipulate_csv_data(input_file, output_file, operations)
+
+    # ASSERT
+    expected_df = pd.DataFrame({"Month": expected_output})
+    assert pd.read_csv(output_file).equals(expected_df)

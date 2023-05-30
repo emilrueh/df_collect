@@ -27,6 +27,7 @@ def test_set_scraper_settings(
         keywords=keywords,
         number_of_events_per_keyword=number_of_events_per_keyword,
         ai_prompt=ai_prompt,
+        csv_operations=None,
     )
 
     # Assert

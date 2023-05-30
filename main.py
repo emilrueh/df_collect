@@ -4,8 +4,9 @@ from src.file_scripts import (
     load_from_csv,
     delete_csv_duplicates,
     json_read,
+    manipulate_csv_data,
 )
-from src.airtable_scripts import csv_to_airtable
+from src.airtable_scripts import csv_to_airtable, update_only_specified_columns
 from src.openai_scripts import openai_loop_over_column_and_add
 from src.settings_scripts import set_scraper_settings
 
@@ -23,6 +24,7 @@ def main():
     # settings["KEYWORDS"]
     # settings["NUMBER_OF_EVENTS_PER_KEYWORD"]
     # settings["AI_PROMPT"]
+    # settings["CSV_OPERATIONS"]
 
     try:
         # SETTINGS
@@ -48,14 +50,25 @@ def main():
                 "conference",
             ],
             number_of_events_per_keyword=100,
+            csv_operations=[
+                # ... other operations
+                {
+                    "action": "substring",
+                    "column_name": "Month",
+                    "start_index": 0,
+                    "end_index": 3,
+                },
+                {"action": "uppercase", "column_name": "Month"},
+                # ... other substring operations
+            ],
         )
 
-        # # scraper scripts
-        # scraper_return = scrape_website(
-        #     url=settings["URL_TO_SCRAPE"],
-        #     keywords=settings["KEYWORDS"],
-        #     event_entries=settings["NUMBER_OF_EVENTS_PER_KEYWORD"],
-        # )
+        # scraper scripts
+        scraper_return = scrape_website(
+            url=settings["URL_TO_SCRAPE"],
+            keywords=settings["KEYWORDS"],
+            event_entries=settings["NUMBER_OF_EVENTS_PER_KEYWORD"],
+        )
 
         # json scripts
         keyword_results_dict = json_read(
@@ -65,6 +78,7 @@ def main():
         # csv scripts
         save_to_csv(data=keyword_results_dict, filename=settings["PATH_TO_CSV"])
         load_from_csv(filename=settings["PATH_TO_CSV"])
+        manipulate_csv_data(settings["PATH_TO_CSV"], settings["CSV_OPERATIONS"])
 
         # checking for duplicates
         delete_csv_duplicates(
@@ -83,11 +97,20 @@ def main():
         )
 
         # airtable scripts
+        #
+        # update_only_specified_columns(
+        #     airtable_api_token=settings["AIRTABLE_API_TOKEN"],
+        #     airtable_api_url=settings["AIRTABLE_API_URL"],
+        #     csv_filepath=r"C:\Users\emilr\Code\PythonProjects\openaiapi\meetupsummary\data\working_data\FIXED-Events_SCRAPED.csv",
+        #     columns_to_update=["Keywords", "Time"],
+        # )
+
         csv_to_airtable(
             airtable_api_token=settings["AIRTABLE_API_TOKEN"],
             airtable_api_url=settings["AIRTABLE_API_URL"],
             csv_filepath=settings["PATH_TO_CSV"],
         )
+
     except Exception as e:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         traceback_details = traceback.extract_tb(exc_traceback)

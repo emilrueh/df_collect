@@ -3,9 +3,23 @@ from dotenv import load_dotenv
 import json
 
 
-def set_scraper_settings(keywords, number_of_events_per_keyword, ai_prompt):
+def set_scraper_settings(
+    keywords, number_of_events_per_keyword, ai_prompt, csv_operations
+):
     # Load environment variables from .env file
     load_dotenv()
+
+    """csv_operations = [
+            # ... other operations
+            {
+                "action": "substring",
+                "column_name": "Month",
+                "start_index": 0,
+                "end_index": 3,
+            },
+            {"action": "uppercase", "column_name": "Month"},
+            # ... other substring operations
+        ]"""
 
     # airtable settings from .env file
     dotenv_path = ".env"
@@ -48,6 +62,7 @@ def set_scraper_settings(keywords, number_of_events_per_keyword, ai_prompt):
             f"\n\nOPENAI_API_KEY:\n{OPENAI_API_KEY}\n\nURL_TO_SCRAPE:\n{URL_TO_SCRAPE}"
             f"\n\nPATH_TO_CSV:\n{PATH_TO_CSV}\n\nkeywords:\n{keywords}"
             f"\n\nNUMBER_OF_EVENTS_PER_KEYWORD:\n{number_of_events_per_keyword}"
+            f"\n\nCSV_OPERATIONS:\n{csv_operations}"
             f"\n\nAI_PROMPT:\n{ai_prompt}\n\n------\n"
         )
 
@@ -61,6 +76,7 @@ def set_scraper_settings(keywords, number_of_events_per_keyword, ai_prompt):
         "KEYWORDS": keywords,
         "NUMBER_OF_EVENTS_PER_KEYWORD": number_of_events_per_keyword,
         "AI_PROMPT": ai_prompt,
+        "CSV_OPERATIONS": csv_operations,
     }
 
     # Set the path to the data folder

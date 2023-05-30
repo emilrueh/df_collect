@@ -117,3 +117,67 @@ def csv_to_airtable(airtable_api_token, airtable_api_url, csv_filepath):
                 print(
                     f"\n{counter} Successfully uploaded record with id: {response.json()['id']}"
                 )
+
+
+def update_only_specified_columns(
+    airtable_api_token, airtable_api_url, csv_filepath, columns_to_update
+):
+    headers = {
+        "Authorization": "Bearer " + airtable_api_token,
+        "Content-Type": "application/json",
+    }
+
+    counter = 0
+
+    with open(csv_filepath, newline="", encoding="utf-8") as csvfile:
+        reader = csv.DictReader(csvfile, delimiter=",")
+        # function call
+        existing_records = fetch_existing_records(airtable_api_token, airtable_api_url)
+
+        if existing_records is None:
+            print("Failed to fetch existing records. Aborting upload.")
+            return
+
+        for row in reader:
+            counter += 1
+            transformed_row = transform_data(row)
+            data = {"fields": transformed_row}
+
+            # Check for existing records based on the "Link" field
+            existing_record = existing_records.get(data["fields"]["Link"])
+
+            if existing_record:
+                # Check if specified columns need an update
+                need_update = False
+                update_data = {"fields": {}}
+                for column in columns_to_update:
+                    if existing_record["fields"].get(column) != data["fields"].get(
+                        column
+                    ):
+                        need_update = True
+                        update_data["fields"][column] = data["fields"][
+                            column
+                        ]  # Only update this column in the update data
+
+                if need_update:
+                    response = requests.patch(
+                        f"{airtable_api_url}/{existing_record['id']}",
+                        headers=headers,
+                        data=json.dumps(update_data),
+                    )
+                    print(f"Updating record: {data['fields']['Link']}")
+                else:
+                    print(f"Skipping record with no changes: {data['fields']['Link']}")
+            else:
+                # Create new record
+                response = requests.post(
+                    airtable_api_url, headers=headers, data=json.dumps(data)
+                )
+                print(f"Creating new record: {data['fields']['Name']}")
+
+            if response.status_code != 200:
+                print(f"Error in data upload: {response.text}")
+            else:
+                print(
+                    f"\n{counter} Successfully uploaded record with id: {response.json()['id']}"
+                )
