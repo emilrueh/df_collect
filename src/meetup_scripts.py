@@ -3,16 +3,22 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import NoSuchElementException
+from datetime import datetime
 import time
+import os
+import json
 
-from src.file_scripts import json_save
+from src.data_scripts import json_save
 
 
 # main loop function
-def scrape_website(url, keywords, event_entries):
-    browser = webdriver.Firefox()
-
+def scrape_meetup(url, keywords, event_entries):
     keyword_results_dict = {}
+    if os.path.exists("meetup_runtime_backup.json"):
+        with open("meetup_runtime_backup.json", "r") as f:
+            keyword_results_dict = json.load(f)
+
+    browser = webdriver.Firefox()
 
     processed_events_urls = set()
 
@@ -21,6 +27,7 @@ def scrape_website(url, keywords, event_entries):
     # find search bar and enter the keywords
     for word in keywords:
         # print(word)  # to see the progress of the script
+        event_data_dict = keyword_results_dict.get(word, {})
 
         browser.get(url)  # Start from the fresh page for each keyword
         time.sleep(5)  # Let the page load
@@ -141,7 +148,8 @@ def scrape_website(url, keywords, event_entries):
         event_per_keyword_counter = 0
         for event in event_url_list:
             # If this event's URL is already in processed_events_urls, skip it
-            if event in processed_events_urls:
+            event_id = event.split("/")[-1]
+            if event in processed_events_urls or event_id in event_data_dict:
                 continue
 
             # progress tracker
@@ -175,6 +183,14 @@ def scrape_website(url, keywords, event_entries):
             except NoSuchElementException:
                 event_description = "NaN"
 
+            # ORGANIZER
+            try:
+                event_organizer = browser.find_element(
+                    By.XPATH, '//*[@id="event-group-link"]/div/div[2]/div[1]'
+                ).text
+            except NoSuchElementException:
+                event_organizer = "NaN"
+
             # date
             try:
                 event_date = browser.find_element(
@@ -192,7 +208,7 @@ def scrape_website(url, keywords, event_entries):
                 except NoSuchElementException:
                     event_date = "NaN"
 
-            # time and date splitting
+            # date and time splitting
             if event_date != "NaN":
                 date_time_parts = event_date.split(" at ")
                 date_parts = date_time_parts[0].split(", ")
@@ -202,11 +218,17 @@ def scrape_website(url, keywords, event_entries):
                 event_start_date = ", ".join(date_parts[1:])
 
                 # The first part of time_parts will be '7:00 PM' which is your event_start_time
-                event_start_time = time_parts[0]
+                # Let's split this into the time and the am/pm part
+                event_start_time_parts = time_parts[0].split(" ")
+                event_start_time = event_start_time_parts[
+                    0
+                ]  # This is the time without the am/pm part
+                event_start_am_pm = event_start_time_parts[1]  # This is the am/pm part
 
             else:
                 event_start_date = "NaN"
                 event_start_time = "NaN"
+                event_start_am_pm = "NaN"
 
             # location
             try:
@@ -269,24 +291,38 @@ def scrape_website(url, keywords, event_entries):
             event_data = {
                 "Name": event_title,
                 "Photo": event_image,
-                "Category": "",
                 "Tags": event_tags,
-                "People": "",
-                "Group Size": "",
                 "Long Description": (
                     event_description.replace("Details\n", "")
                     if "Details\n" in event_description
                     else event_description
                 ),
                 "Summary": "",
+                "Organizer": event_organizer,
                 "Location": event_address,
                 "Venue": event_location,
                 "Gmaps link": event_maps_link,
-                "Date": event_start_date,
-                "Time": event_start_time,
+                "Date": event_start_date,  # June 9, 2023 7:00
+                "Month": datetime.strptime(event_start_date, "%B %d, %Y")
+                .strftime("%B")[:3]
+                .upper()
+                if event_start_date != "NaN"
+                else "NaN",
+                "Day": datetime.strptime(event_start_date, "%B %d, %Y").strftime("%d")
+                if event_start_date != "NaN"
+                else "NaN",
+                "Year": datetime.strptime(event_start_date, "%B %d, %Y").strftime("%Y")
+                if event_start_date != "NaN"
+                else "NaN",
+                "Time": event_start_time if event_start_time != "NaN" else "NaN",
+                "AM/PM": event_start_am_pm if event_start_am_pm != "NaN" else "NaN",
                 "Price": event_price.title(),
                 "Link": event,
                 "Keyword": word,
+                "Source": "Meetup",
+                "Category": "",
+                "People": "",
+                "Group Size": "",
             }
 
             # Add this event's URL to processed_events_urls
@@ -294,8 +330,11 @@ def scrape_website(url, keywords, event_entries):
 
             # dict of dict
             # Store the event_data dictionary in event_data_dict, using the event title as the key
-            event_id = event.split("/")[-1]
+            # event_id = event.split("/")[-1]
             event_data_dict[event_id] = event_data
+
+            with open("meetup_runtime_backup.json", "w") as f:
+                json.dump(keyword_results_dict, f)
 
         # dict of dict of dict
         # Store the results for this keyword
@@ -303,6 +342,6 @@ def scrape_website(url, keywords, event_entries):
 
     browser.quit()
 
-    json_save(keyword_results_dict, "scraper_backup.json")
+    json_save(keyword_results_dict, "meetup_runtime_backup.json")
 
     return keyword_results_dict

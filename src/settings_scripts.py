@@ -35,6 +35,7 @@ def set_scraper_settings(
         AIRTABLE_API_URL = f"https://api.airtable.com/v0/{AIRTABLE_API_BASE_ID}/{AIRTABLE_API_TABLE_NAME}"
 
         OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+        EVENTBRITE_PRIVATE_TOKEN = os.getenv("EVENTBRITE_PRIVATE_TOKEN")
 
         # Read the SCRAPE_URL from the .env file
         SCRAPE_URL = os.getenv("SCRAPE_URL")
@@ -50,7 +51,7 @@ def set_scraper_settings(
         print("Failed to load one or more environment variables after 3 attempts.")
 
     # csv settings
-    CSV_FILE_NAME = f"{AIRTABLE_API_TABLE_NAME}.csv"
+    CSV_FILE_NAME = f"output.csv"
 
     # Get current working directory for filepath
     CWD = os.getcwd()
@@ -59,7 +60,9 @@ def set_scraper_settings(
     if input("Do you want to view the settings? (y/n): ") == "y":
         print(
             f"\nSETTINGS:\n------\n\nAIRTABLE_API_TOKEN:\n{AIRTABLE_API_TOKEN}\n\nAIRTABLE_API_URL:\n{AIRTABLE_API_URL}"
-            f"\n\nOPENAI_API_KEY:\n{OPENAI_API_KEY}\n\nURL_TO_SCRAPE:\n{URL_TO_SCRAPE}"
+            f"\n\nOPENAI_API_KEY:\n{OPENAI_API_KEY}"
+            f"\n\nEVENTBRITE_PRIVATE_TOKEN: {EVENTBRITE_PRIVATE_TOKEN}"
+            f"\n\nURL_TO_SCRAPE:\n{URL_TO_SCRAPE}"
             f"\n\nPATH_TO_CSV:\n{PATH_TO_CSV}\n\nkeywords:\n{keywords}"
             f"\n\nNUMBER_OF_EVENTS_PER_KEYWORD:\n{number_of_events_per_keyword}"
             f"\n\nCSV_OPERATIONS:\n{csv_operations}"
@@ -71,6 +74,7 @@ def set_scraper_settings(
         "AIRTABLE_API_TOKEN": AIRTABLE_API_TOKEN,
         "AIRTABLE_API_URL": AIRTABLE_API_URL,
         "OPENAI_API_KEY": OPENAI_API_KEY,
+        "EVENTBRITE_PRIVATE_TOKEN": EVENTBRITE_PRIVATE_TOKEN,
         "URL_TO_SCRAPE": URL_TO_SCRAPE,
         "PATH_TO_CSV": PATH_TO_CSV,
         "KEYWORDS": keywords,

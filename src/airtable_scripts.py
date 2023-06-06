@@ -1,28 +1,30 @@
-# airtable imports
 import requests
 import json
 import csv
 
 
-# airtable functions
 def transform_data(row):
     transformed_row = {
         "Name": row["Name"],
         "Photo": [{"url": row["Photo"]}] if row["Photo"] else [],
-        "Category": row["Category"].split(", ") if row["Category"] else [],
         "Tags": row["Tags"],
-        "People": row["People"].split(", ") if row["People"] else [],
-        "Group Size": row["Group Size"] if row["Group Size"] else None,
         "Long Description": row["Long Description"],
         "Summary": row["Summary"],
+        "Organizer": row["Organizer"],
         "Location": row["Location"],
         "Venue": row["Venue"],
         "Gmaps link": row["Gmaps link"],
-        "Date": row["Date"] if row["Date"] != "NaN" else None,
+        "Date": row["Date"]
+        if row["Date"] not in ["", "NaN"]
+        else None,  # Check if Date is empty or "NaN"
         "Time": row["Time"] if row["Time"] != "NaN" else None,
+        "Month": row["Month"] if row["Month"] else None,
+        "Day": row["Day"] if row["Day"] else None,
+        "Year": row["Year"] if row["Year"] else None,
         "Price": row["Price"],
         "Link": row["Link"],
         "Keyword": row["Keyword"],
+        "Source": row["Source"],
     }
     return transformed_row
 
@@ -92,31 +94,45 @@ def csv_to_airtable(airtable_api_token, airtable_api_url, csv_filepath):
             # Check for existing records based on the "Link" field
             existing_record = existing_records.get(data["fields"]["Link"])
 
-            if existing_record:
-                # Only update existing record if there are changes
-                if transformed_row != existing_record["fields"]:
-                    response = requests.patch(
-                        f"{airtable_api_url}/{existing_record['id']}",
-                        headers=headers,
-                        data=json.dumps(data),
-                    )
-                    print(f"Updating record: {data['fields']['Link']}")
+            try:
+                if existing_record:
+                    # Only update existing record if there are changes
+                    if transformed_row != existing_record["fields"]:
+                        response = requests.patch(
+                            f"{airtable_api_url}/{existing_record['id']}",
+                            headers=headers,
+                            data=json.dumps(data),
+                        )
+                        print(f"Updating record: {data['fields']['Link']}")
+                    else:
+                        print(
+                            f"Skipping record with no changes: {data['fields']['Link']}"
+                        )
+                        continue
                 else:
-                    print(f"Skipping record with no changes: {data['fields']['Link']}")
-                    continue
-            else:
-                # Create new record
-                response = requests.post(
-                    airtable_api_url, headers=headers, data=json.dumps(data)
-                )
-                print(f"Creating new record: {data['fields']['Name']}")
+                    # Create new record
+                    response = requests.post(
+                        airtable_api_url, headers=headers, data=json.dumps(data)
+                    )
+                    print(f"Creating new record: {data['fields']['Name']}")
 
-            if response.status_code != 200:
-                print(f"Error in data upload: {response.text}")
-            else:
+                # If there was an error in the response, check if it was a "computed" error
+                if response.status_code != 200:
+                    error_message = (
+                        json.loads(response.text).get("error", {}).get("message", "")
+                    )
+                    if "computed" in error_message:
+                        print(f"Skipping computed column: {error_message}")
+                        continue
+                    else:
+                        print(f"Error in data upload: {response.text}")
+
                 print(
                     f"\n{counter} Successfully uploaded record with id: {response.json()['id']}"
                 )
+
+            except Exception as e:
+                print(f"Error in data upload: {str(e)}")
 
 
 def update_only_specified_columns(

@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import pytest
 
-from src.file_scripts import delete_csv_duplicates, manipulate_csv_data
+from src.data_scripts import delete_csv_duplicates, manipulate_csv_data
 
 
 # file_scripts.py

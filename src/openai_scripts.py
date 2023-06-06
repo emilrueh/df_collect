@@ -41,13 +41,22 @@ def call_openai(api_key, prompt, input_text):
 def openai_loop_over_column_and_add(
     api_key, prompt, df, column_for_input, column_for_output, path_to_csv
 ):
+    row_counter = 0
     for index, row in df.iterrows():
+        row_counter += 1
         df.loc[index, column_for_output] = call_openai(
             api_key,
             prompt,
             row[column_for_input],
         )
-        print(f"\n{index} | {df.loc[index, column_for_output]}")
+        print(
+            f"\nEvent: {row_counter} | Index: {index} | {df.loc[index, column_for_output]}"
+        )
+
+    # adjust the saving of the new df to csv by adding '_SUM' just before the file ending
+    path_to_csv = (
+        path_to_csv.rsplit(".", 1)[0] + "_SUM." + path_to_csv.rsplit(".", 1)[1]
+    )
 
     # save new df to csv
     df.to_csv(path_to_csv, index=False)
