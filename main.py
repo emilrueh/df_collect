@@ -10,6 +10,7 @@ from src.openai_scripts import openai_loop_over_column_and_add
 from src.airtable_scripts import csv_to_airtable
 
 import pandas as pd
+import time
 
 import traceback
 import sys
@@ -17,6 +18,9 @@ import sys
 
 # main function calling functions
 def main():
+    start_time = time.time()
+    print(f"Start: {start_time}")
+
     # settings["AIRTABLE_API_TOKEN"]
     # settings["AIRTABLE_API_URL"]
     # settings["OPENAI_API_KEY"]
@@ -36,30 +40,98 @@ def main():
         settings = set_scraper_settings(
             ai_prompt="Summarize the following event description in one short and concise sentence. Do not include specific information, only focus on the core idea and have an excited tone to it. Do not write any headings. The sentence can be at maximum 125 characters long:",
             keywords=[
-                # "founder",
+                "business",
+                "network",
+                "conference",
+                "entrepreneur",
+                "ai",
+                "artificial",
+                "web3",
+                "crypto",
+                "blockchain",
+                "nft",
+                "climate",
+                "sustainability",
+                "code",
+                "coding",
+                "tech",
+                "robot",
+                "design",
+                "educat",
+                "learn",
+                "government",
+                "politic",
+                "stock",
+                "estate",
                 "invest",
-                # "funding",
-                # "entrepreneur",
-                # "venture capital",
-                # "startup",
-                # "marketing",
-                # "sales",
-                # "network",
-                # "web3",
-                # "crypto",
-                # "ai",
-                # "tech",
-                # "product",
-                # "code",
-                # "real estate",
-                # "conference",
+                "money",
+                "finance",
+                "tax",
+                "career",
+                "job",
+                "recruit",
+                "hiring",
+                "hire",
+                "journalis",
+                "leader",
+                "marketing",
+                "sales",
+                "affiliate",
+                "influencer",
+                "selling",
+                "media",
+                "nomad",
+                "remote",
+                "solopreneur",
+                "nonprofit",
+                "ngo",
+                "charit",
+                "product",
+                "ui",
+                "ux",
+                "science",
+                "scientific",
+                "research",
+                "startup",
+                "vc",
+                "venture",
+                "founder",
+                "founding",
+                "fundrais",
+                "funding",
+                "accelerator",
+                "gründ",
+                "vertrieb",
+                "führung",
+                "finanz",
+                "aktie",
+                "steuer",
+                "immobilie",
+                "politik",
+                "bildung",
+                "klima",
+                "nachhaltigkeit",
+                "künstliche intelligenz",
+                "krypto",
+                "beruf",
+                "karriere",
+                "gehalt",
+                "ausbildung",
+                "unternehmer",
+                "unternehmen",
+                "presse",
+                "news",
+                "forsch",
+                "wissenschaft",
+                "hackathon",
+                "grafik",
             ],
-            number_of_events_per_keyword=2,
+            number_of_events_per_keyword=100,
             csv_operations=[
                 {
                     "action": "filter_rows_by_keywords",
                     "columns": ["Name", "Long Description"],
-                    "keywords": [
+                    "keywords": [  # !!!
                         "founder",
                         "invest",
                         "funding",
@@ -177,7 +249,12 @@ def main():
             + "_SUM."
             + settings["PATH_TO_CSV"].rsplit(".", 1)[1],
         )
+        end_time = time.time()
+        print(f"End: {end_time}")
 
+        execution_time = end_time - start_time
+
+        print(f"The script executed in {execution_time} seconds")
     # # #
 
     except Exception as e:

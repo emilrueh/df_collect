@@ -2,7 +2,11 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import (
+    NoSuchElementException,
+    WebDriverException,
+    TimeoutException,
+)
 from datetime import datetime
 import time
 import os
@@ -14,13 +18,17 @@ from src.data_scripts import json_save
 # main loop function
 def scrape_meetup(url, keywords, event_entries):
     keyword_results_dict = {}
+    processed_events_urls = set()
     if os.path.exists("meetup_runtime_backup.json"):
         with open("meetup_runtime_backup.json", "r") as f:
             keyword_results_dict = json.load(f)
+        for keyword in keyword_results_dict:
+            for event_id in keyword_results_dict[keyword]:
+                processed_events_urls.add(
+                    keyword_results_dict[keyword][event_id]["Link"]
+                )
 
     browser = webdriver.Firefox()
-
-    processed_events_urls = set()
 
     total_event_counter = 0
     # main loop
@@ -28,9 +36,36 @@ def scrape_meetup(url, keywords, event_entries):
     for word in keywords:
         # print(word)  # to see the progress of the script
         event_data_dict = keyword_results_dict.get(word, {})
+        if (
+            word in keyword_results_dict
+            and len(keyword_results_dict[word]) >= event_entries
+        ):
+            print(f"Skipping keyword {word} because it has already been fully scraped.")
+            continue
 
-        browser.get(url)  # Start from the fresh page for each keyword
-        time.sleep(5)  # Let the page load
+        max_retries = 5
+        retries = 0
+        while retries < max_retries:
+            try:
+                browser.get(url)  # Start from the fresh page for each keyword
+                time.sleep(5)  # Let the page load
+                break
+            except TimeoutException as te:
+                print(f"TimeoutException occurred: {te}. Retrying...")
+                retries += 1
+                time.sleep(10)  # Wait for 10 seconds before retrying
+                continue
+            except (WebDriverException, Exception) as e:
+                print(f"Error occurred: {e}. Retrying...")
+                retries += 1
+                time.sleep(10)  # Wait for 10 seconds before retrying
+                continue
+
+        if retries == max_retries:
+            print(
+                "Failed to load the page after maximum retries. Moving to the next keyword."
+            )
+            continue
 
         # COOKIES
         try:
@@ -147,9 +182,11 @@ def scrape_meetup(url, keywords, event_entries):
         # loop through event links and copy info
         event_per_keyword_counter = 0
         for event in event_url_list:
-            # If this event's URL is already in processed_events_urls, skip it
+            # If this event's URL is already in processed_events_urls or in the backup, skip it
             event_id = event.split("/")[-1]
-            if event in processed_events_urls or event_id in event_data_dict:
+            if event in processed_events_urls or (
+                word in keyword_results_dict and event_id in keyword_results_dict[word]
+            ):
                 continue
 
             # progress tracker
@@ -328,10 +365,11 @@ def scrape_meetup(url, keywords, event_entries):
             # Add this event's URL to processed_events_urls
             processed_events_urls.add(event)
 
-            # dict of dict
             # Store the event_data dictionary in event_data_dict, using the event title as the key
-            # event_id = event.split("/")[-1]
             event_data_dict[event_id] = event_data
+
+            # Update the keyword_results_dict before updating the backup file
+            keyword_results_dict[word] = event_data_dict
 
             with open("meetup_runtime_backup.json", "w") as f:
                 json.dump(keyword_results_dict, f)
