@@ -80,9 +80,39 @@ def delete_duplicates(data, columns_to_compare=None):
         data = pd.read_csv(data)
 
     # Keep one instance of each event with the same name, remove others
-    data_no_duplicates = data.drop_duplicates(subset=columns_to_compare, keep="first")
+    df_no_duplicates = data.drop_duplicates(subset=columns_to_compare, keep="first")
 
-    return data_no_duplicates  # return the DataFrame object
+    return df_no_duplicates  # return the DataFrame object
+
+
+def delete_duplicates_add_keywords(data, columns_to_compare=None):
+    if isinstance(data, str):  # if the input is a file path
+        data = pd.read_csv(data)
+
+    original_data = data.copy()  # copy the original data to compare later
+
+    # Convert 'Keyword' to a set, which removes duplicates within each group
+    data["Keyword"] = data.groupby(columns_to_compare)["Keyword"].transform(
+        lambda x: ",".join(set(x.str.split(",").sum()))
+    )
+
+    # Keep one instance of each event with the same name, remove others
+    df_no_duplicates = data.drop_duplicates(subset=columns_to_compare, keep="first")
+
+    # Print the indexes and keywords
+    added_keywords_rows = df_no_duplicates[
+        df_no_duplicates["Keyword"].str.contains(",", na=False)
+    ]
+    indexes_and_keywords = added_keywords_rows[["Keyword"]]
+    print("\nRows that gained keywords:\n")
+    with pd.option_context("display.max_rows", None, "display.max_columns", None):
+        print(indexes_and_keywords)
+    print("\nTotal rows that gained keywords: ", indexes_and_keywords.shape[0])
+
+    return df_no_duplicates
+
+
+# ##
 
 
 def json_save(data, filename):

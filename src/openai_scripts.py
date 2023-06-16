@@ -29,7 +29,11 @@ def call_openai(api_key, prompt, input_text):
 
             return output_text
 
-        except (openai.error.RateLimitError, requests.exceptions.ConnectionError):
+        except (
+            openai.error.RateLimitError,
+            requests.exceptions.ConnectionError,
+            openai.error.APIError,
+        ):
             print(
                 f"ERROR encountered. New API call attempt in {(2**attempts)} seconds...\n"
             )

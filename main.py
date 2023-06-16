@@ -3,7 +3,7 @@ from src.eventbrite_scripts import get_all_events_info, create_eventbrite_object
 from src.meetup_scripts import scrape_meetup
 from src.data_scripts import (
     save_dict_to_csv,
-    delete_duplicates,
+    delete_duplicates_add_keywords,
     manipulate_csv_data,
 )
 from src.openai_scripts import openai_loop_over_column_and_add
@@ -220,7 +220,7 @@ def main():
         df_eventbrite = pd.read_csv(path_to_csv_eventbrite)
         df_combined = pd.concat([df_meetup, df_eventbrite], ignore_index=True)
         # deleting duplicates
-        df_combined = delete_duplicates(
+        df_combined = delete_duplicates_add_keywords(
             data=df_combined,
             columns_to_compare=["Name", "Long Description", "Date", "Price"],
         )
@@ -232,7 +232,6 @@ def main():
             file_path=None,
         )
         # openai call
-        # openai scripts
         openai_loop_over_column_and_add(
             api_key=settings["OPENAI_API_KEY"],
             prompt=settings["AI_PROMPT"],
