@@ -1,253 +1,96 @@
-from src.settings_scripts import set_scraper_settings
+from src.settings_scripts import load_settings
+
+# event collection
 from src.eventbrite_scripts import get_all_events_info, create_eventbrite_object
 from src.meetup_scripts import scrape_meetup
+
+# ai summary
+from src.openai_scripts import openai_loop_over_column_and_add
+
+# data manipulation
 from src.data_scripts import (
-    save_dict_to_csv,
+    create_df,
+    flatten_data,
     delete_duplicates_add_keywords,
     manipulate_csv_data,
 )
-from src.openai_scripts import openai_loop_over_column_and_add
-from src.airtable_scripts import csv_to_airtable
 
-import pandas as pd
+# send to db
+from src.xano_scripts import send_data_to_xano
+
 import time
-
 import traceback
 import sys
 
 
 # main function calling functions
 def main():
-    start_time = time.time()
-    print(f"Start: {start_time}")
-
-    # settings["AIRTABLE_API_TOKEN"]
-    # settings["AIRTABLE_API_URL"]
-    # settings["OPENAI_API_KEY"]
-    # settings["EVENTBRITE_PRIVATE_TOKEN"]
-    # settings["URL_TO_SCRAPE"]
-    # settings["PATH_TO_CSV"]
-    # settings["KEYWORDS"]
-    # settings["NUMBER_OF_EVENTS_PER_KEYWORD"]
-    # settings["AI_PROMPT"]
-    # settings["CSV_OPERATIONS"]
-
     try:
-        # # #
+        # TIMING
+        start_time = time.time()
+        print(f"Start: {start_time}")
 
-        # settings
         # SETTINGS
-        settings = set_scraper_settings(
-            ai_prompt="Summarize the following event description in one short and concise sentence. Do not include specific information, only focus on the core idea and have an excited tone to it. Do not write any headings. The sentence can be at maximum 125 characters long:",
-            keywords=[
-                "business",
-                "network",
-                "conference",
-                "entrepreneur",
-                "ai",
-                "artificial",
-                "web3",
-                "crypto",
-                "blockchain",
-                "nft",
-                "climate",
-                "sustainability",
-                "code",
-                "coding",
-                "tech",
-                "robot",
-                "design",
-                "educat",
-                "learn",
-                "government",
-                "politic",
-                "stock",
-                "estate",
-                "invest",
-                "money",
-                "finance",
-                "tax",
-                "career",
-                "job",
-                "recruit",
-                "hiring",
-                "hire",
-                "journalis",
-                "leader",
-                "marketing",
-                "sales",
-                "affiliate",
-                "influencer",
-                "selling",
-                "media",
-                "nomad",
-                "remote",
-                "solopreneur",
-                "nonprofit",
-                "ngo",
-                "charit",
-                "product",
-                "ui",
-                "ux",
-                "science",
-                "scientific",
-                "research",
-                "startup",
-                "vc",
-                "venture",
-                "founder",
-                "founding",
-                "fundrais",
-                "funding",
-                "accelerator",
-                "gründ",
-                "vertrieb",
-                "führung",
-                "finanz",
-                "aktie",
-                "steuer",
-                "immobilie",
-                "politik",
-                "bildung",
-                "klima",
-                "nachhaltigkeit",
-                "künstliche intelligenz",
-                "krypto",
-                "beruf",
-                "karriere",
-                "gehalt",
-                "ausbildung",
-                "unternehmer",
-                "unternehmen",
-                "presse",
-                "news",
-                "forsch",
-                "wissenschaft",
-                "hackathon",
-                "grafik",
-            ],
-            number_of_events_per_keyword=100,
-            csv_operations=[
-                {
-                    "action": "filter_rows_by_keywords",
-                    "columns": ["Name", "Long Description"],
-                    "keywords": [  # !!!
-                        "founder",
-                        "invest",
-                        "funding",
-                        "entrepreneur",
-                        "venture capital",
-                        "marketing",
-                        "web3",
-                        "crypto",
-                    ],
-                    "skip_columns": ["Keyword"],
-                },
-                {"action": "add_column", "column_name": "Done", "column_value": "NaN"},
-                {
-                    "action": "add_column",
-                    "column_name": "Calculation",
-                    "column_value": "NaN",
-                },
-                {
-                    "action": "add_column",
-                    "column_name": "Category",
-                    "column_value": "NaN",
-                },
-                {
-                    "action": "add_column",
-                    "column_name": "Topics",
-                    "column_value": "NaN",
-                },
-                {
-                    "action": "add_column",
-                    "column_name": "Chosen (from Topics)",
-                    "column_value": "NaN",
-                },
-                {
-                    "action": "add_column",
-                    "column_name": "Status (from Topics)",
-                    "column_value": "NaN",
-                },
-                {
-                    "action": "add_column",
-                    "column_name": "Chosen (from Topics) 2",
-                    "column_value": "NaN",
-                },
-                {
-                    "action": "add_column",
-                    "column_name": "Topicname (from Topics 2)",
-                    "column_value": "NaN",
-                },
-                {
-                    "action": "add_column",
-                    "column_name": "Calculation 2",
-                    "column_value": "NaN",
-                },
-                {"action": "uppercase", "column_name": "Keyword"},
-            ],
+        settings = load_settings(
+            r"C:\Users\emilr\Code\PythonProjects\openaiapi\meetupsummary\data\settings_test.json"
         )
-        # meetup collect
-        meetup_return = scrape_meetup(
-            url=settings["URL_TO_SCRAPE"],
-            keywords=settings["KEYWORDS"],
-            event_entries=settings["NUMBER_OF_EVENTS_PER_KEYWORD"],
-        )
-        # eventbrite collect
-        eventbrite = create_eventbrite_object(settings["EVENTBRITE_PRIVATE_TOKEN"])
+        # EVENTBRITE
         eventbrite_return = get_all_events_info(
-            eventbrite,
-            settings["KEYWORDS"],
-            "https://www.eventbrite.com/d/",  # Update this URL as required
-            "Berlin, Germany",  # Update this location as required
+            eventbrite=create_eventbrite_object(
+                private_token=settings["EVENTBRITE_PRIVATE_TOKEN"]
+            ),
+            keywords=settings["KEYWORDS"],
+            search_url=settings["EVENTBRITE_URL"],
+            location=settings["EVENT_LOCATION"],
+            max_pages=settings["EB_PAGINATION"],
         )
-        # saving data to csv
-        path_to_csv_test = settings["PATH_TO_CSV"]
-        path_to_csv_meetup = (
-            path_to_csv_test.rsplit(".", 1)[0]
-            + "_MEETUP."
-            + path_to_csv_test.rsplit(".", 1)[1]
+
+        # MEETUP
+        meetup_return = scrape_meetup(
+            url=settings["MEETUP_URL"], keywords=settings["KEYWORDS"], event_entries=100
         )
-        path_to_csv_eventbrite = (
-            path_to_csv_test.rsplit(".", 1)[0]
-            + "_EVENTBRITE."
-            + path_to_csv_test.rsplit(".", 1)[1]
+
+        # JSON
+        flattened_meetup = flatten_data(meetup_return)
+        flattened_eventbrite = flatten_data(eventbrite_return)
+        full_events_return = flattened_eventbrite + flattened_meetup
+
+        # CSV
+        df = create_df(full_events_return)
+        df = delete_duplicates_add_keywords(
+            data=df,
+            columns_to_compare=["Name", "Long_Description", "Date", "Price"],
         )
-        save_dict_to_csv(meetup_return, path_to_csv_meetup)
-        save_dict_to_csv(eventbrite_return, path_to_csv_eventbrite)
-        # combining data
-        df_meetup = pd.read_csv(path_to_csv_meetup)
-        df_eventbrite = pd.read_csv(path_to_csv_eventbrite)
-        df_combined = pd.concat([df_meetup, df_eventbrite], ignore_index=True)
-        # deleting duplicates
-        df_combined = delete_duplicates_add_keywords(
-            data=df_combined,
-            columns_to_compare=["Name", "Long Description", "Date", "Price"],
-        )
-        # manipulating df
-        df_combined = manipulate_csv_data(
-            input_df=df_combined,
+        df = manipulate_csv_data(
+            input_df=df,
             operations=settings["CSV_OPERATIONS"],
             output_filepath=settings["PATH_TO_CSV"],
             file_path=None,
         )
-        # openai call
-        openai_loop_over_column_and_add(
+
+        # OPENAI
+        df = openai_loop_over_column_and_add(
             api_key=settings["OPENAI_API_KEY"],
             prompt=settings["AI_PROMPT"],
-            df=df_combined,
-            column_for_input="Long Description",
+            data=df,
+            column_for_input="Long_Description",
             column_for_output="Summary",
-            path_to_csv=settings["PATH_TO_CSV"],
+            path_to_file=r"C:\Users\emilr\Code\PythonProjects\openaiapi\meetupsummary\src\notebooks\full_events_summarized.csv",
+            char_max=170,
+            char_min=48,
+            to_remove=['"'],
         )
-        # airtable call
-        csv_to_airtable(
-            airtable_api_token=settings["AIRTABLE_API_TOKEN"],
-            airtable_api_url=settings["AIRTABLE_API_URL"],
-            csv_filepath=settings["PATH_TO_CSV"].rsplit(".", 1)[0]
-            + "_SUM."
-            + settings["PATH_TO_CSV"].rsplit(".", 1)[1],
+
+        # XANO
+        xano_response = send_data_to_xano(
+            data=df,
+            api_key=settings["XANO_API_KEY"],
+            image_endpoint_url=settings["XANO_ENDPOINT_IMAGE"],
+            update_endpoint_url=settings["XANO_ENDPOINT_POST"],
+            get_all_endpoint_url=settings["XANO_ENDPOINT_GET_ALL"],
         )
+
+        # TIMING
         end_time = time.time()
         print(f"End: {end_time}")
 

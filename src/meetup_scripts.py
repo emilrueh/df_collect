@@ -12,7 +12,7 @@ import time
 import os
 import json
 
-from src.data_scripts import json_save
+from src.data_scripts import json_save, get_data_dir
 
 
 # main loop function
@@ -193,7 +193,7 @@ def scrape_meetup(url, keywords, event_entries):
             event_per_keyword_counter += 1
             total_event_counter += 1
             print(
-                f"{word}: {event_per_keyword_counter} | Total: {total_event_counter} | {event}"
+                f"{word}: {event_per_keyword_counter} | total: {total_event_counter} | {event}"
             )
 
             browser.get(event)  # open event link
@@ -262,6 +262,10 @@ def scrape_meetup(url, keywords, event_entries):
                 ]  # This is the time without the am/pm part
                 event_start_am_pm = event_start_time_parts[1]  # This is the am/pm part
 
+                event_start_time = datetime.strptime(
+                    event_start_time, "%H:%M"
+                ).strftime("%I:%M")
+
             else:
                 event_start_date = "NaN"
                 event_start_time = "NaN"
@@ -329,7 +333,7 @@ def scrape_meetup(url, keywords, event_entries):
                 "Name": event_title,
                 "Photo": event_image,
                 "Tags": event_tags,
-                "Long Description": (
+                "Long_Description": (
                     event_description.replace("Details\n", "")
                     if "Details\n" in event_description
                     else event_description
@@ -338,7 +342,7 @@ def scrape_meetup(url, keywords, event_entries):
                 "Organizer": event_organizer,
                 "Location": event_address,
                 "Venue": event_location,
-                "Gmaps link": event_maps_link,
+                "Gmaps_link": event_maps_link,
                 "Date": event_start_date,  # June 9, 2023 7:00
                 "Month": datetime.strptime(event_start_date, "%B %d, %Y")
                 .strftime("%B")[:3]
@@ -352,14 +356,14 @@ def scrape_meetup(url, keywords, event_entries):
                 if event_start_date != "NaN"
                 else "NaN",
                 "Time": event_start_time if event_start_time != "NaN" else "NaN",
-                "AM/PM": event_start_am_pm if event_start_am_pm != "NaN" else "NaN",
+                "AM_PM": event_start_am_pm if event_start_am_pm != "NaN" else "NaN",
                 "Price": event_price.title(),
                 "Link": event,
-                "Keyword": word,
-                "Source": "Meetup",
+                "Keyword": word.upper(),
                 "Category": "",
-                "People": "",
-                "Group Size": "",
+                "Source": "Meetup",
+                "Highlights": "",
+                "bookmark_users_id": None,
             }
 
             # Add this event's URL to processed_events_urls
@@ -371,7 +375,9 @@ def scrape_meetup(url, keywords, event_entries):
             # Update the keyword_results_dict before updating the backup file
             keyword_results_dict[word] = event_data_dict
 
-            with open("meetup_runtime_backup.json", "w") as f:
+            backup_file_path = get_data_dir() / "runtime_backup_meetup.json"
+
+            with open(backup_file_path, "w") as f:
                 json.dump(keyword_results_dict, f)
 
         # dict of dict of dict
@@ -380,6 +386,6 @@ def scrape_meetup(url, keywords, event_entries):
 
     browser.quit()
 
-    json_save(keyword_results_dict, "meetup_runtime_backup.json")
+    json_save(keyword_results_dict, backup_file_path)
 
     return keyword_results_dict
