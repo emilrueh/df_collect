@@ -15,4 +15,7 @@ data/runtime_backup_meetup.json
 src/airtable_scripts.py
 src/eventbrite_scripts.py
 src/meetup_scripts.py
+src/code_for_gpt.py
+src/sounds.py
+src/xano_scripts_backup.py
 ```
