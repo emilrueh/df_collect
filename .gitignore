@@ -12,6 +12,7 @@ working_data/
 notebooks/
 data/runtime_backup_eventbrite.json
 data/runtime_backup_meetup.json
+data/backups
 src/airtable_scripts.py
 src/eventbrite_scripts.py
 src/meetup_scripts.py
