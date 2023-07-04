@@ -1,0 +1,87 @@
+# ...
+# ...
+# ...
+# ...
+from datetime import datetime
+import time
+import os
+import json
+
+from src.data_scripts import json_save, get_data_dir
+
+
+# main loop function
+def scrape_meetup(url, keywords, event_entries):
+    keyword_results_dict = {}
+    # ...
+        for keyword in keyword_results_dict:
+            for event_id in keyword_results_dict[keyword]:
+                # ...
+
+    browser = webdriver.Firefox()
+
+
+    # MAIN LOOP
+    for word in keywords:
+        event_data_dict = keyword_results_dict.get(word, {})
+        # ...
+
+        while retries < max_retries:
+            # ...
+
+        # COOKIES
+        # ...
+
+        # SEARCH BAR
+        # ...
+
+        # EVENT URLS
+        event_url_list = []
+        # ...
+
+        # EVENT INFO
+        event_data_dict = {}
+        # ...
+
+        for event in event_url_list:
+
+            # TITLE
+            # ...
+
+            # DESCRIPTION
+            # ...
+
+            # ORGANIZER
+            # ...
+            
+            # DATE
+            # ...
+
+            # LOCATION
+            # ...
+
+            # TAGS
+            # ...
+
+            # IMAGE
+            # ...
+
+            # PRICE
+            # ...
+
+            # DICTIONARY
+            event_data = {}
+
+            event_data_dict[event_id] = event_data
+
+            keyword_results_dict[word] = event_data_dict
+
+            # ...
+
+        keyword_results_dict[word] = event_data_dict
+
+    browser.quit()
+
+    # ...
+
+    return keyword_results_dict

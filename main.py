@@ -13,6 +13,7 @@ from src.data_scripts import (
     flatten_data,
     delete_duplicates_add_keywords,
     manipulate_csv_data,
+    map_keywords_to_categories,
 )
 
 # send to db
@@ -22,13 +23,15 @@ import time
 import traceback
 import sys
 
+from termcolor import colored
+
 
 # main function calling functions
 def main():
     try:
         # TIMING
         start_time = time.time()
-        print(f"Start: {start_time}")
+        print(f"Start time: {start_time}")
 
         # SETTINGS
         settings = load_settings(
@@ -45,9 +48,13 @@ def main():
             max_pages=settings["EB_PAGINATION"],
         )
 
+        print(colored(f'\nPath to the output csv: {settings["PATH_TO_CSV"]}\n', "cyan"))
+
         # MEETUP
         meetup_return = scrape_meetup(
-            url=settings["MEETUP_URL"], keywords=settings["KEYWORDS"], event_entries=100
+            url=settings["MEETUP_URL"],
+            keywords=settings["KEYWORDS"],
+            event_entries=settings["MU_PAGINATION"],
         )
 
         # JSON
@@ -55,18 +62,28 @@ def main():
         flattened_eventbrite = flatten_data(eventbrite_return)
         full_events_return = flattened_eventbrite + flattened_meetup
 
-        # CSV
+        # # CSV
+        # creating df from json
         df = create_df(full_events_return)
+
+        # deleting duplicates and appending keywords
         df = delete_duplicates_add_keywords(
             data=df,
             columns_to_compare=["Name", "Long_Description", "Date", "Price"],
         )
+        # operations
         df = manipulate_csv_data(
             input_df=df,
             operations=settings["CSV_OPERATIONS"],
             output_filepath=settings["PATH_TO_CSV"],
             file_path=None,
         )
+        # creating catgories from keywords
+        df["Category"] = df["Keyword"].apply(
+            lambda x: map_keywords_to_categories(x, settings["CATEGORIES"])
+        )
+        # creating archived column
+        df["Archived"] = False
 
         # OPENAI
         df = openai_loop_over_column_and_add(
@@ -75,7 +92,7 @@ def main():
             data=df,
             column_for_input="Long_Description",
             column_for_output="Summary",
-            path_to_file=r"C:\Users\emilr\Code\PythonProjects\openaiapi\meetupsummary\src\notebooks\full_events_summarized.csv",
+            path_to_file=settings["PATH_TO_CSV"],
             char_max=170,
             char_min=48,
             to_remove=['"'],
@@ -86,8 +103,11 @@ def main():
             data=df,
             api_key=settings["XANO_API_KEY"],
             image_endpoint_url=settings["XANO_ENDPOINT_IMAGE"],
-            update_endpoint_url=settings["XANO_ENDPOINT_POST"],
-            get_all_endpoint_url=settings["XANO_ENDPOINT_GET_ALL"],
+            send_endpoint_url=settings["XANO_ENDPOINT_POST"],
+            check_endpoint_url=settings["XANO_ENDPOINT_GET_ALL"],
+            edit_endpoint_url=settings["XANO_ENDPOINT_EDIT"],
+            delete_endpoint_url=settings["XANO_ENDPOINT_DELETE"],
+            table_name=settings["XANO_TABLE_NAME"],
         )
 
         # TIMING
@@ -96,7 +116,7 @@ def main():
 
         execution_time = end_time - start_time
 
-        print(f"The script executed in {execution_time} seconds")
+        print(colored(f"\nThe script executed in {execution_time} seconds.", "cyan"))
     # # #
 
     except Exception as e:

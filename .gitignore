@@ -12,4 +12,7 @@ NOTES.md
 settings_test.json
 data/runtime_backup_eventbrite.json
 data/runtime_backup_meetup.json
+src/airtable_scripts.py
+src/eventbrite_scripts.py
+src/meetup_scripts.py
 ```

@@ -4,7 +4,7 @@
     "MU_PAGINATION": 100,
     "EB_PAGINATION": null,
     "EVENT_LOCATION": "Berlin, Germany",
-    "PATH_TO_CSV": "c:\\Users\\emilr\\Code\\PythonProjects\\openaiapi\\meetupsummary\\src\\notebooks\\data\\output.csv",
+    "PATH_TO_CSV": "c:\\Users\\emilr\\Code\\PythonProjects\\openaiapi\\meetupsummary\\src\\data\\events_output.csv",
     "KEYWORDS": [
         "business",
         "network",
@@ -92,10 +92,107 @@
         "hackathon",
         "grafik"
     ],
+    "CATEGORIES": {
+        "BUSINESS": "GENERAL",
+        "NETWORK": "GENERAL",
+        "CONFERENCE": "GENERAL",
+        "ENTREPRENEUR": "GENERAL",
+        "UNTERNEHMER": "GENERAL",
+        "UNTERNEHMEN": "GENERAL",
+        "AI": "AI",
+        "ARTIFICIAL": "AI",
+        "KÜNSTLICHE INTELLIGENZ": "AI",
+        "KI": "AI",
+        "WEB3": "BLOCKCHAIN",
+        "CRYPTO": "BLOCKCHAIN",
+        "BLOCKCHAIN": "BLOCKCHAIN",
+        "NFT": "BLOCKCHAIN",
+        "KRYPTO": "BLOCKCHAIN",
+        "CLIMATE": "CLIMATE",
+        "SUSTAINABILITY": "CLIMATE",
+        "KLIMA": "CLIMATE",
+        "NACHHALTIGKEIT": "CLIMATE",
+        "CODE": "CODING",
+        "CODING": "CODING",
+        "TECH": "CODING",
+        "ROBOT": "CODING",
+        "HACKATHON": "CODING",
+        "DESIGN": "DESIGN",
+        "GRAFIK": "DESIGN",
+        "EDUCAT": "EDUCATION",
+        "LEARN": "EDUCATION",
+        "BILDUNG": "EDUCATION",
+        "E-COMMERCE": "ECOMMERCE",
+        "ECOMMERCE": "ECOMMERCE",
+        "GOVERNMENT": "GOVERNMENT",
+        "POLITICS": "GOVERNMENT",
+        "POLITIK": "GOVERNMENT",
+        "PRESSE": "GOVERNMENT",
+        "NEWS": "GOVERNMENT",
+        "STOCK": "INVESTING",
+        "ESTATE": "INVESTING",
+        "INVEST": "INVESTING",
+        "MONEY": "INVESTING",
+        "FINANCE": "INVESTING",
+        "TAX": "INVESTING",
+        "FINANZ": "INVESTING",
+        "AKTIE": "INVESTING",
+        "STEUER": "INVESTING",
+        "IMMOBILIE": "INVESTING",
+        "FINTECH": "ECOMMERCE",
+        "FIN-TECH": "ECOMMERCE",
+        "CAREER": "JOB",
+        "JOB": "JOB",
+        "RECRUIT": "JOB",
+        "HIRING": "JOB",
+        "HIRE": "JOB",
+        "BERUF": "JOB",
+        "KARRIERE": "JOB",
+        "GEHALT": "JOB",
+        "AUSBILDUNG": "JOB",
+        "HR": "JOB",
+        "JOURNALIS": "JOURNALISM",
+        "LEADER": "LEADERSHIP",
+        "VERTRIEB": [
+            "LEADERSHIP",
+            "MARKETING"
+        ],
+        "FÜHRUNG": "LEADERSHIP",
+        "MARKETING": "MARKETING",
+        "SALES": "MARKETING",
+        "AFFILIATE": "MARKETING",
+        "INFLUENCER": "MARKETING",
+        "SELLING": "MARKETING",
+        "MEDIA": "MARKETING",
+        "SEO": "MARKETING",
+        "NOMAD": "NOMADS",
+        "SOLOPRENEUR": "NOMADS",
+        "NONPROFIT": "NONPROFIT",
+        "NGO": "NONPROFIT",
+        "CHARIT": "NONPROFIT",
+        "PRODUCT": "PRODUCT",
+        "UI": "PRODUCT",
+        "UX": "PRODUCT",
+        "SCIENCE": "SCIENCE",
+        "SCIENTIFIC": "SCIENCE",
+        "RESEARCH": "SCIENCE",
+        "FORSCH": "SCIENCE",
+        "WISSENSCHAFT": "SCIENCE",
+        "STARTUP": "STARTUPS",
+        "PITCH": "STARTUPS",
+        "VC": "STARTUPS",
+        "VENTURE": "STARTUPS",
+        "FOUNDER": "STARTUPS",
+        "FOUNDING": "STARTUPS",
+        "FUNDRAIS": "STARTUPS",
+        "FUNDING": "STARTUPS",
+        "ACCELERATOR": "STARTUPS",
+        "GRÜND": "STARTUPS"
+    },
     "AI_PROMPT": "You will receive the description of a business focused event. Analyze the text and focus on the single most important piece of information regarding the core idea of the event. Write it as a new description of what the event is about. Condense this one point into a single sentence of under 120 characters including spaces but more than 100 characters. Use an excited but professional voice. Delete any mention of the core idea. Don't mention the character count. Stay below the character limit or you missed your purpose. Only return the sentence by itself. Event description: ",
     "CSV_OPERATIONS": [
         {
-            "action": "filter_rows_by_keywords",
+            "action": "filter_for_keywords",
             "columns": [
                 "Name",
                 "Long_Description"
@@ -187,6 +284,56 @@
             "skip_columns": [
                 "Keyword"
             ]
+        },
+        {
+            "action": "filter_out_keywords",
+            "columns": [
+                "Name",
+                "Long_Description",
+                "Location",
+                "Organizer"
+            ],
+            "keywords": [
+                "Yoga",
+                "Buddhism",
+                "Religion",
+                "Catholic",
+                "Christian",
+                "Hinduism",
+                "Spiritual",
+                "Comedy",
+                "Dance",
+                "Dancing",
+                "Ballet",
+                "Heil",
+                "Meditat",
+                "Sex",
+                "Leipzig",
+                "Rock",
+                "Gothic"
+            ]
+        },
+        {
+            "action": "language_filter",
+            "column_name": "Long_Description",
+            "languages": [
+                "en",
+                "de"
+            ]
+        },
+        {
+            "action": "language_filter",
+            "column_name": "Name",
+            "languages": [
+                "en",
+                "de"
+            ]
+        },
+        {
+            "action": "replace_string",
+            "column_name": "Long_Description",
+            "old_text": "\\n",
+            "new_text": " "
         }
     ]
 }

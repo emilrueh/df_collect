@@ -14,6 +14,9 @@ def load_secrets():
         "XANO_ENDPOINT_POST": os.getenv("XANO_ENDPOINT_POST"),
         "XANO_ENDPOINT_IMAGE": os.getenv("XANO_ENDPOINT_IMAGE"),
         "XANO_ENDPOINT_GET_ALL": os.getenv("XANO_ENDPOINT_GET_ALL"),
+        "XANO_ENDPOINT_EDIT": os.getenv("XANO_ENDPOINT_EDIT"),
+        "XANO_ENDPOINT_DELETE": os.getenv("XANO_ENDPOINT_DELETE"),
+        "XANO_TABLE_NAME": os.getenv("XANO_TABLE_NAME"),
     }
 
     return secrets_dict

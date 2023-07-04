@@ -1,4 +1,3 @@
-import csv
 import pandas as pd
 import json
 import tempfile
@@ -6,6 +5,9 @@ import shutil
 import os
 from pathlib import Path
 import uuid
+import numpy as np
+from langdetect import detect
+import subprocess
 
 
 # general data work
@@ -21,6 +23,31 @@ def get_data_dir(base_path: str = None):
     # data_dir.mkdir(exist_ok=True)
 
     return data_dir
+
+
+# get prject tree of current git
+def git_tree_as_string(repo_path="."):
+    # Get list of files in repository
+    result = subprocess.run(
+        ["git", "ls-files"], capture_output=True, cwd=repo_path, text=True
+    )
+    files = result.stdout.split("\n")
+
+    # Build and print directory tree
+    tree = {}
+    for file in files:
+        path = file.split("/")
+        node = tree
+        for part in path:
+            node = node.setdefault(part, {})
+    print_tree(tree)
+
+
+def print_tree(tree, indent=""):
+    for name, node in tree.items():
+        print(f"{indent}{name}")
+        if isinstance(node, dict):
+            print_tree(node, indent + "    ")
 
 
 def backup_data(input_data, backup_directory, input_name=None):
@@ -202,6 +229,24 @@ def delete_duplicates_add_keywords(data, columns_to_compare=None):
     return df_no_duplicates
 
 
+def map_keywords_to_categories(keywords, category_dict):
+    if pd.isnull(keywords):  # Add this check to handle NaN values (which are floats)
+        return ""
+    categories = set()  # Change this from a list to a set
+    for keyword in keywords.split(","):
+        keyword = keyword.strip().upper()  # Ensure format matches keys in dictionary
+        if keyword in category_dict:
+            category_values = category_dict[keyword]
+            if isinstance(category_values, list):  # Check if the value is a list
+                for value in category_values:
+                    categories.add(value)
+            else:
+                categories.add(
+                    category_values
+                )  # Use add method for sets instead of append
+    return ",".join(categories)
+
+
 def manipulate_csv_data(
     file_path=None, output_filepath=None, operations=None, input_df=None
 ):
@@ -226,9 +271,11 @@ def manipulate_csv_data(
     else:
         df = pd.read_csv(file_path)
 
-    # Fill NA/NaN values with an empty string
-    df = df.fillna("")
-
+    # Fill NA/NaN values differently for numeric and non-numeric columns
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    non_numeric_cols = df.select_dtypes(exclude=[np.number]).columns
+    df[numeric_cols] = df[numeric_cols].fillna(0)
+    df[non_numeric_cols] = df[non_numeric_cols].fillna("")
     if output_filepath == None:
         output_filepath = file_path
 
@@ -271,14 +318,35 @@ def manipulate_csv_data(
                 df[operation["column_name"]] = (
                     df[operation["column_name"]].astype(str).str[start_index:end_index]
                 )
-        elif operation["action"] == "keyword_filter":
-            keyword = operation["keyword"]
-            df = df[~df[operation["column_name"]].str.contains(keyword, case=False)]
-        elif operation["action"] == "filter_rows_by_keywords":
+        elif operation["action"] == "replace_string":
+            df[operation["column_name"]] = df[operation["column_name"]].replace(
+                operation["old_text"], operation["new_text"], regex=True
+            )
+
+        elif operation["action"] == "filter_out_keywords":
+            keywords = [keyword.lower() for keyword in operation["keywords"]]
             columns = operation["columns"]
-            keywords = operation["keywords"]
+
+            mask = np.logical_or.reduce(
+                [
+                    df[column].str.lower().str.contains(keyword, na=False)
+                    for keyword in keywords
+                    for column in columns
+                ]
+            )
+            df = df[~mask]
+
+        elif operation["action"] == "language_filter":
+            languages = operation["languages"]
+            column = operation["column_name"]
+
+            mask = df[column].apply(lambda x: detect(x) in languages if x else False)
+            df = df[mask]
+
+        elif operation["action"] == "filter_for_keywords":
+            columns = operation["columns"]
+            keywords = [kw.lower() for kw in operation["keywords"]]
             skip_columns = operation.get("skip_columns", [])
-            keywords = [kw.lower() for kw in keywords]
 
             mask = []
             # Process each row

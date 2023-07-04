@@ -1,0 +1,60 @@
+from bs4 import BeautifulSoup
+import requests
+from urllib.parse import quote
+
+from datetime import datetime
+from time import sleep
+
+from eventbrite import Eventbrite
+
+import json
+import os
+
+from src.data_scripts import get_data_dir
+
+from termcolor import colored
+
+
+# EVENT IDs
+def search_events(search_url, query, location, max_pages=None):
+    # ...
+    return unique_links
+
+
+def extract_event_id(url):
+    # ...
+    return event_id
+
+
+def create_eventbrite_object(private_token):
+    return Eventbrite(private_token)
+
+
+def get_event_data(eventbrite, event_id):
+    # ...
+    return event_data
+
+
+def get_venue_data(eventbrite, venue_id):
+    # ...
+    return venue_data
+
+
+def get_ticket_data(eventbrite, event_id):
+    # ...
+    return ticket_data
+
+
+def get_organizer_data(eventbrite, organizer_id):
+    # ...
+    return organizer_data
+
+
+def event_info_to_dict(eventbrite, event_id, keyword):
+    # ...
+    return event_dict
+
+
+def get_all_events_info(eventbrite, keywords, search_url, location, max_pages=None):
+    # ...
+    return all_events_info

@@ -17,7 +17,7 @@ def call_openai(api_key, prompt, input_text):
     attempts = 0
     while attempts < 5:
         try:
-            # Send the request to the Chat API
+            # Send the request to the OpenAI API
             response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
