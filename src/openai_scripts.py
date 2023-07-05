@@ -67,6 +67,7 @@ def openai_loop_over_column_and_add(
         char_min = int(0.4 * char_max)
 
     # Convert data to a uniform format (list of dictionaries)
+    original_type = type(data)
     if isinstance(data, pd.DataFrame):
         data = data.to_dict(orient="records")
     elif isinstance(data, list):
@@ -98,93 +99,11 @@ def openai_loop_over_column_and_add(
             path_to_file.rsplit(".", 1)[0] + "_SUM." + path_to_file.rsplit(".", 1)[1]
         )
 
-        if isinstance(data, pd.DataFrame):
+        # Convert back to DataFrame if necessary
+        if isinstance(data, list):
             data = pd.DataFrame(data)
-            data.to_csv(path_to_file, index=False)
-        elif isinstance(data, list):
-            with open(path_to_file, "w") as f:
-                json.dump(data, f)
 
+        data.to_csv(path_to_file, index=False)
         logger.info(f"New file saved at path: {path_to_file}")
 
     return data
-
-
-# def openai_loop_over_column_and_add(
-#     api_key,
-#     prompt,
-#     data,
-#     column_for_input,
-#     column_for_output,
-#     path_to_file=None,
-#     char_max=None,
-#     char_min=None,
-#     to_remove=None,
-# ):
-#     row_counter = 0
-#     if char_max is not None and char_min is None:
-#         char_min = int(0.4 * char_max)
-
-#     if isinstance(data, pd.DataFrame):
-#         for index, row in data.iterrows():
-#             row_counter += 1
-#             api_output = call_openai(api_key, prompt, row[column_for_input])
-
-#             while (char_max and len(api_output) > char_max) or (
-#                 char_min and len(api_output) < char_min
-#             ):
-#                 logger.info(
-#                     f"Output length not within limits {char_min} and {char_max} with {len(api_output)} characters at row {index}. Trying again..."
-#                 )
-#                 time.sleep(0.5)
-#                 api_output = call_openai(api_key, prompt, row[column_for_input])
-
-#                 logger.info(f"\nRetry: | Index: {index}\n{api_output}")
-
-#             if to_remove is not None:
-#                 for string in to_remove:
-#                     api_output = api_output.replace(string, "")
-
-#             data.loc[index, column_for_output] = api_output
-#             logger.info(
-#                 f"\nEvent: {row_counter} | Index: {index}\n{data.loc[index, column_for_output]}"
-#             )
-#     elif isinstance(data, list):
-#         for i, item in enumerate(data):
-#             row_counter += 1
-#             api_output = call_openai(api_key, prompt, item[column_for_input])
-
-#             while (char_max and len(api_output) > char_max) or (
-#                 char_min and len(api_output) < char_min
-#             ):
-#                 print(
-#                     f"Output length not within limits {char_min} and {char_max} with {len(api_output)} characters at item {i}. Trying again..."
-#                 )
-#                 time.sleep(0.5)
-#                 api_output = call_openai(api_key, prompt, item[column_for_input])
-
-#                 print(f"\nRetry: | Index: {i}\n{api_output}")
-
-#             if to_remove is not None:
-#                 for string in to_remove:
-#                     api_output = api_output.replace(string, "")
-
-#             item[column_for_output] = api_output
-#             print(f"\nEvent: {row_counter} | Index: {i}\n{item[column_for_output]}")
-
-#     if path_to_file is not None:
-#         # adjust the saving of the new data to the file by adding '_SUM' just before the file ending
-#         path_to_file = (
-#             path_to_file.rsplit(".", 1)[0] + "_SUM." + path_to_file.rsplit(".", 1)[1]
-#         )
-
-#         # save new data to the file
-#         if isinstance(data, pd.DataFrame):
-#             data.to_csv(path_to_file, index=False)
-#         elif isinstance(data, list):
-#             with open(path_to_file, "w") as f:
-#                 json.dump(data, f)
-
-#         print(f"New file saved at path: {path_to_file}")
-
-#     return data

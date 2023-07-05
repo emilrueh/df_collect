@@ -76,7 +76,7 @@ def main():
         )
 
         logger.info(
-            colored(f'\nPath to the output csv: {settings["PATH_TO_CSV"]}\n', "cyan")
+            colored(f'Path to the output csv: {settings["PATH_TO_CSV"]}', "cyan")
         )
 
         # MEETUP
