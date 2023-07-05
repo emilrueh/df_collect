@@ -1,3 +1,36 @@
+import logging
+from datetime import datetime
+
+# Logging Configuration #
+timestamp = datetime.now().strftime("%d%m%Y-%H%M%S")
+
+c_handler = logging.StreamHandler()
+f_handler = logging.FileHandler(filename=f"logs\\runtime_{timestamp}.log", mode="a")
+c_format = logging.Formatter(
+    fmt="%(name)s - %(levelname)s - %(module)s @ %(lineno)4d ---> %(message)s",
+    datefmt="%d.%m.%Y %H:%M:%S",
+)
+f_format = logging.Formatter(
+    fmt="%(asctime)s - %(name)s - %(levelname)s - %(module)s @ %(lineno)4d ---> %(message)s",
+    datefmt="%d.%m.%Y %H:%M:%S",
+)
+
+c_handler.setLevel(logging.WARNING)
+f_handler.setLevel(logging.DEBUG)
+c_handler.setFormatter(c_format)
+f_handler.setFormatter(f_format)
+
+logger = logging.getLogger("main_logger")
+logger.setLevel(logging.DEBUG)  # set root logger level
+logger.addHandler(c_handler)
+logger.addHandler(f_handler)
+# Logging Configuration #
+
+import time
+import traceback
+import sys
+from termcolor import colored
+
 from src.settings_scripts import load_settings
 
 # event collection
@@ -19,19 +52,13 @@ from src.data_scripts import (
 # send to db
 from src.xano_scripts import send_data_to_xano
 
-import time
-import traceback
-import sys
-
-from termcolor import colored
-
 
 # main function calling functions
 def main():
     try:
         # TIMING
         start_time = time.time()
-        print(f"Start time: {start_time}")
+        logger.info(f"Start time: {start_time}")
 
         # SETTINGS
         settings = load_settings(
@@ -48,7 +75,9 @@ def main():
             max_pages=settings["EB_PAGINATION"],
         )
 
-        print(colored(f'\nPath to the output csv: {settings["PATH_TO_CSV"]}\n', "cyan"))
+        logger.info(
+            colored(f'\nPath to the output csv: {settings["PATH_TO_CSV"]}\n', "cyan")
+        )
 
         # MEETUP
         meetup_return = scrape_meetup(
@@ -112,11 +141,13 @@ def main():
 
         # TIMING
         end_time = time.time()
-        print(f"End: {end_time}")
+        logger.info(f"End: {end_time}")
 
         execution_time = end_time - start_time
 
-        print(colored(f"\nThe script executed in {execution_time} seconds.", "cyan"))
+        logger.info(
+            colored(f"The script executed in {execution_time / 60} minutes.", "cyan")
+        )
     # # #
 
     except Exception as e:
@@ -127,12 +158,15 @@ def main():
         line_number = traceback_details[-1].lineno
         exc_type_name = exc_type.__name__
 
-        print(
-            f"\nERROR\n------\n{exc_type_name} at line: {line_number}\n{fname}\n{e}\n------\n"
-        )
+        error_message = f"CRITICAL ERROR: {exc_type_name} at line: {line_number} in file: {fname}. Error message: {e}"
+        logger.critical(error_message)
+
         view_traceback = input("Do you want to see the full error message? (y/n) ")
-        if view_traceback == "y".casefold():
-            print(f"\n{traceback_details}\n{e}\n")
+        if view_traceback.lower() == "y":
+            error_traceback = (
+                f"Full error traceback: {traceback_details}, error message: {e}"
+            )
+            logger.critical(error_traceback)
 
 
 # Run the main function

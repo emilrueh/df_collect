@@ -1,3 +1,4 @@
+import logging
 import pandas as pd
 import json
 import tempfile
@@ -8,6 +9,8 @@ import uuid
 import numpy as np
 from langdetect import detect
 import subprocess
+
+logger = logging.getLogger("main_logger")
 
 
 # general data work
@@ -221,10 +224,10 @@ def delete_duplicates_add_keywords(data, columns_to_compare=None):
         df_no_duplicates["Keyword"].str.contains(",", na=False)
     ]
     indexes_and_keywords = added_keywords_rows[["Keyword"]]
-    print("\nRows that gained keywords:\n")
+    logger.info("Rows that gained keywords:")
     with pd.option_context("display.max_rows", None, "display.max_columns", None):
-        print(indexes_and_keywords)
-    print("\nTotal rows that gained keywords: ", indexes_and_keywords.shape[0])
+        logger.info(indexes_and_keywords)
+    logger.info(f"Total rows that gained keywords: {indexes_and_keywords.shape[0]}")
 
     return df_no_duplicates
 
@@ -250,25 +253,19 @@ def map_keywords_to_categories(keywords, category_dict):
 def manipulate_csv_data(
     file_path=None, output_filepath=None, operations=None, input_df=None
 ):
-    """
-    This is how to set parameters:
-
-    operations = [
-            # ... other operations
-            {'action': 'substring', 'column_name': 'Month', 'start_index': 0, 'end_index': 3},
-            {'action': 'uppercase', 'column_name': 'Month'},
-            # ... other substring operations
-        ]
-    """
-
     if file_path is None and input_df is None:
+        logger.error("Either a file path or an input DataFrame must be provided.")
         raise ValueError("Either a file path or an input DataFrame must be provided.")
     elif file_path is not None and input_df is not None:
+        logger.error("Only one of file path or input DataFrame should be provided.")
         raise ValueError("Only one of file path or input DataFrame should be provided.")
 
     if input_df is not None:
         df = input_df
     else:
+        if not os.path.exists(file_path):
+            logger.error(f"File not found: {file_path}")
+            raise FileNotFoundError(f"File not found: {file_path}")
         df = pd.read_csv(file_path)
 
     # Fill NA/NaN values differently for numeric and non-numeric columns
@@ -280,95 +277,229 @@ def manipulate_csv_data(
         output_filepath = file_path
 
     if operations == None:
-        return print("No operations specified. Skipping function...")
+        logger.warning("No operations specified. Skipping function...")
+        return
 
     # Apply operations
     for operation in operations:
-        if operation["action"] == "add_column":
-            df[operation["column_name"]] = operation["column_value"]
-        elif operation["action"] == "remove_column":
-            df.drop(columns=[operation["column_name"]], axis=1, inplace=True)
-        elif operation["action"] == "lowercase":
-            df[operation["column_name"]] = (
-                df[operation["column_name"]].astype(str).str.lower()
-            )
-        elif operation["action"] == "uppercase":
-            df[operation["column_name"]] = (
-                df[operation["column_name"]].astype(str).str.upper()
-            )
-        elif operation["action"] == "titlecase":
-            df[operation["column_name"]] = (
-                df[operation["column_name"]].astype(str).str.title()
-            )
-        elif operation["action"] == "split":
-            df[operation["new_column_name"]] = (
-                df[operation["column_name"]]
-                .astype(str)
-                .str.split(pat=operation["delimiter"])
-            )
-        elif operation["action"] == "substring":
-            start_index = operation["start_index"]
-            end_index = operation["end_index"]
-            new_column_name = operation.get("new_column_name", None)
-            if new_column_name:
-                df[new_column_name] = (
-                    df[operation["column_name"]].astype(str).str[start_index:end_index]
+        action = operation["action"]
+        column_name = operation.get("column_name")
+
+        if column_name and column_name not in df.columns:
+            logger.warning(f"Column '{column_name}' not found in DataFrame.")
+            continue
+
+        try:
+            if action == "add_column":
+                df[operation["column_name"]] = operation["column_value"]
+            elif action == "remove_column":
+                df.drop(columns=[column_name], axis=1, inplace=True)
+            elif action in ["lowercase", "uppercase", "titlecase"]:
+                df[column_name] = df[column_name].astype(str)
+                if action == "lowercase":
+                    df[column_name] = df[column_name].str.lower()
+                elif action == "uppercase":
+                    df[column_name] = df[column_name].str.upper()
+                else:  # titlecase
+                    df[column_name] = df[column_name].str.title()
+            elif action == "split":
+                df[operation["new_column_name"]] = df[column_name].str.split(
+                    pat=operation["delimiter"]
                 )
-            else:
-                df[operation["column_name"]] = (
-                    df[operation["column_name"]].astype(str).str[start_index:end_index]
-                )
-        elif operation["action"] == "replace_string":
-            df[operation["column_name"]] = df[operation["column_name"]].replace(
-                operation["old_text"], operation["new_text"], regex=True
-            )
-
-        elif operation["action"] == "filter_out_keywords":
-            keywords = [keyword.lower() for keyword in operation["keywords"]]
-            columns = operation["columns"]
-
-            mask = np.logical_or.reduce(
-                [
-                    df[column].str.lower().str.contains(keyword, na=False)
-                    for keyword in keywords
-                    for column in columns
-                ]
-            )
-            df = df[~mask]
-
-        elif operation["action"] == "language_filter":
-            languages = operation["languages"]
-            column = operation["column_name"]
-
-            mask = df[column].apply(lambda x: detect(x) in languages if x else False)
-            df = df[mask]
-
-        elif operation["action"] == "filter_for_keywords":
-            columns = operation["columns"]
-            keywords = [kw.lower() for kw in operation["keywords"]]
-            skip_columns = operation.get("skip_columns", [])
-
-            mask = []
-            # Process each row
-            for index, row in df.iterrows():
-                row_text = ""
-
-                # Combine text from all relevant columns
-                for column in columns:
-                    if column not in skip_columns:
-                        row_text += " " + str(row[column]).lower()
-
-                # Check if any of the keywords is in the combined text
-                if any(keyword in row_text for keyword in keywords):
-                    mask.append(True)
+            elif action == "substring":
+                start_index = operation["start_index"]
+                end_index = operation["end_index"]
+                new_column_name = operation.get("new_column_name", None)
+                if new_column_name:
+                    df[new_column_name] = df[column_name].str[start_index:end_index]
                 else:
-                    mask.append(False)
+                    df[column_name] = df[column_name].str[start_index:end_index]
+            elif action == "replace_string":
+                df[column_name] = df[column_name].replace(
+                    operation["old_text"], operation["new_text"], regex=True
+                )
+            elif action == "filter_out_keywords":
+                keywords = [keyword.lower() for keyword in operation["keywords"]]
+                columns = operation["columns"]
+                mask = np.logical_or.reduce(
+                    [
+                        df[column].str.lower().str.contains(keyword, na=False)
+                        for keyword in keywords
+                        for column in columns
+                    ]
+                )
+                df = df[~mask]
+            elif action == "language_filter":
+                languages = operation["languages"]
+                column = operation["column_name"]
+                mask = df[column].apply(
+                    lambda x: detect(x) in languages if x else False
+                )
+                df = df[mask]
+            elif action == "filter_for_keywords":
+                columns = operation["columns"]
+                keywords = [kw.lower() for kw in operation["keywords"]]
+                skip_columns = operation.get("skip_columns", [])
+                mask = []
+                for index, row in df.iterrows():
+                    row_text = " ".join(
+                        str(row[column]).lower()
+                        for column in columns
+                        if column not in skip_columns
+                    )
+                    if any(keyword in row_text for keyword in keywords):
+                        mask.append(True)
+                    else:
+                        mask.append(False)
+                df = df[mask]
+            else:
+                logger.error(f"Invalid action '{action}'")
+                raise ValueError(f"Invalid action '{action}'")
 
-            df = df[mask]
+        except Exception as e:
+            logger.error(
+                f"Error occurred during action '{action}' on column '{column_name}': {e}",
+                exc_info=True,
+            )
+            continue
 
-        else:
-            raise ValueError(f"Invalid action '{operation['action']}'")
-
-    df.to_csv(output_filepath, index=False)
+    try:
+        df.to_csv(output_filepath, index=False)
+    except Exception as e:
+        logger.error(
+            f"Error occurred while saving DataFrame to CSV: {e}", exc_info=True
+        )
 
     return df
+
+
+# def manipulate_csv_data(
+#     file_path=None, output_filepath=None, operations=None, input_df=None
+# ):
+#     """
+#     This is how to set parameters:
+
+#     operations = [
+#             # ... other operations
+#             {'action': 'substring', 'column_name': 'Month', 'start_index': 0, 'end_index': 3},
+#             {'action': 'uppercase', 'column_name': 'Month'},
+#             # ... other substring operations
+#         ]
+#     """
+
+#     if file_path is None and input_df is None:
+#         raise ValueError("Either a file path or an input DataFrame must be provided.")
+#     elif file_path is not None and input_df is not None:
+#         raise ValueError("Only one of file path or input DataFrame should be provided.")
+
+#     if input_df is not None:
+#         df = input_df
+#     else:
+#         df = pd.read_csv(file_path)
+
+#     # Fill NA/NaN values differently for numeric and non-numeric columns
+#     numeric_cols = df.select_dtypes(include=[np.number]).columns
+#     non_numeric_cols = df.select_dtypes(exclude=[np.number]).columns
+#     df[numeric_cols] = df[numeric_cols].fillna(0)
+#     df[non_numeric_cols] = df[non_numeric_cols].fillna("")
+#     if output_filepath == None:
+#         output_filepath = file_path
+
+#     if operations == None:
+#         logger.warning("No operations specified. Skipping function...")
+#         return print("No operations specified. Skipping function...")
+
+#     # Apply operations
+#     for operation in operations:
+#         if operation["action"] == "add_column":
+#             df[operation["column_name"]] = operation["column_value"]
+#         elif operation["action"] == "remove_column":
+#             df.drop(columns=[operation["column_name"]], axis=1, inplace=True)
+#         elif operation["action"] == "lowercase":
+#             df[operation["column_name"]] = (
+#                 df[operation["column_name"]].astype(str).str.lower()
+#             )
+#         elif operation["action"] == "uppercase":
+#             df[operation["column_name"]] = (
+#                 df[operation["column_name"]].astype(str).str.upper()
+#             )
+#         elif operation["action"] == "titlecase":
+#             df[operation["column_name"]] = (
+#                 df[operation["column_name"]].astype(str).str.title()
+#             )
+#         elif operation["action"] == "split":
+#             df[operation["new_column_name"]] = (
+#                 df[operation["column_name"]]
+#                 .astype(str)
+#                 .str.split(pat=operation["delimiter"])
+#             )
+#         elif operation["action"] == "substring":
+#             start_index = operation["start_index"]
+#             end_index = operation["end_index"]
+#             new_column_name = operation.get("new_column_name", None)
+#             if new_column_name:
+#                 df[new_column_name] = (
+#                     df[operation["column_name"]].astype(str).str[start_index:end_index]
+#                 )
+#             else:
+#                 df[operation["column_name"]] = (
+#                     df[operation["column_name"]].astype(str).str[start_index:end_index]
+#                 )
+#         elif operation["action"] == "replace_string":
+#             df[operation["column_name"]] = df[operation["column_name"]].replace(
+#                 operation["old_text"], operation["new_text"], regex=True
+#             )
+
+#         elif operation["action"] == "filter_out_keywords":
+#             keywords = [keyword.lower() for keyword in operation["keywords"]]
+#             columns = operation["columns"]
+
+#             mask = np.logical_or.reduce(
+#                 [
+#                     df[column].str.lower().str.contains(keyword, na=False)
+#                     for keyword in keywords
+#                     for column in columns
+#                 ]
+#             )
+#             df = df[~mask]
+
+#         elif operation["action"] == "language_filter":
+#             languages = operation["languages"]
+#             column = operation["column_name"]
+
+#             mask = df[column].apply(lambda x: detect(x) in languages if x else False)
+#             df = df[mask]
+
+#         elif operation["action"] == "filter_for_keywords":
+#             columns = operation["columns"]
+#             keywords = [kw.lower() for kw in operation["keywords"]]
+#             skip_columns = operation.get("skip_columns", [])
+
+#             mask = []
+#             # Process each row
+#             for index, row in df.iterrows():
+#                 row_text = ""
+
+#                 # Combine text from all relevant columns
+#                 for column in columns:
+#                     if column not in skip_columns:
+#                         row_text += " " + str(row[column]).lower()
+
+#                 # Check if any of the keywords is in the combined text
+#                 if any(keyword in row_text for keyword in keywords):
+#                     mask.append(True)
+#                 else:
+#                     mask.append(False)
+
+#             df = df[mask]
+
+#         else:
+#             logger.error(f"Invalid action '{operation['action']}'")
+#             raise ValueError(f"Invalid action '{operation['action']}'")
+
+#     try:
+#         df.to_csv(output_filepath, index=False)
+#     except Exception as e:
+#         logger.error(f"Error occurred while saving DataFrame to CSV: {e}", exc_info=True)
+
+#     return df

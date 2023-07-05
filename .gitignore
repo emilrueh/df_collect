@@ -12,6 +12,8 @@ working_data/
 notebooks/
 data/runtime_backup_eventbrite.json
 data/runtime_backup_meetup.json
+data/events_output_SUM.csv
+data/events_output.csv
 data/backups
 src/airtable_scripts.py
 src/eventbrite_scripts.py
@@ -19,4 +21,5 @@ src/meetup_scripts.py
 src/code_for_gpt.py
 src/sounds.py
 src/xano_scripts_backup.py
+logs
 ```

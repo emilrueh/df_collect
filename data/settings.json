@@ -4,7 +4,7 @@
     "MU_PAGINATION": 100,
     "EB_PAGINATION": null,
     "EVENT_LOCATION": "Berlin, Germany",
-    "PATH_TO_CSV": "c:\\Users\\emilr\\Code\\PythonProjects\\openaiapi\\meetupsummary\\src\\data\\events_output.csv",
+    "PATH_TO_CSV": "c:\\Users\\emilr\\Code\\PythonProjects\\openaiapi\\meetupsummary\\data\\events_output.csv",
     "KEYWORDS": [
         "business",
         "network",
