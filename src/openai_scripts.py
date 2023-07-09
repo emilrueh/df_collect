@@ -1,12 +1,15 @@
 import logging
+from src.helper_utils import main_logger_name
+
+logger_name = main_logger_name
+logger = logging.getLogger(logger_name)
+
+
 import time
 import requests
-import json
 import pandas as pd
 
 import openai
-
-logger = logging.getLogger("main_logger")
 
 
 def call_openai(api_key, prompt, input_text):
@@ -43,6 +46,7 @@ def call_openai(api_key, prompt, input_text):
             requests.exceptions.ConnectionError,
             openai.error.APIError,
             openai.error.ServiceUnavailableError,
+            openai.error.APIConnectionError,
         ):
             logger.warning(
                 f"ERROR encountered. New API call attempt in {(2**attempts)} seconds..."

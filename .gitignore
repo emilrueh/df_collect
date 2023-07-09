@@ -1,12 +1,14 @@
 .env
 venv/
 __pycache__/
+logs/backups
 geckodriver.log
 meetupsummary.egg-info/
 setup.py
 tests/
 NOTES.md
 settings_test.json
+conftest.py
 discontinued/
 working_data/
 notebooks/
@@ -21,5 +23,7 @@ src/meetup_scripts.py
 src/code_for_gpt.py
 src/sounds.py
 src/xano_scripts_backup.py
-logs
+src/tenx_scripts.py
+src/handy_utils.py
+src/settings_scripts.py
 ```

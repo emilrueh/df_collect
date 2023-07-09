@@ -1,30 +1,37 @@
 import logging
-import json
-import requests
+from src.helper_utils import main_logger_name
+
+logger_name = main_logger_name
+logger = logging.getLogger(logger_name)
+
+
 import pandas as pd
 import numpy as np
+import json
 
-import datetime
-from typing import Union, Optional, Dict, Any
+import requests
 
 import time
-from src.token_bucket import TokenBucket
-
-from io import BytesIO
-from PIL import Image
-
-import base64
+import datetime
+from datetime import timedelta
 
 from termcolor import colored
 
-logger = logging.getLogger("main_logger")
+from io import BytesIO
+from PIL import Image
+import base64
+
+from typing import Union, Optional, Dict, Any
+
+from src.token_bucket import TokenBucket
+
 
 HTTP_POST = "POST"
 HTTP_GET = "GET"
 HTTP_DELETE = "DELETE"
 
 
-rate_limiter = TokenBucket(10, 0.25)
+rate_limiter = TokenBucket(tokens=10, fill_rate=0.2)
 
 
 def api_rate_limit_wait():
@@ -182,8 +189,10 @@ def send_request_with_retry(
     data: Optional[Union[str, bytes]] = None,
     max_attempts: int = 6,
 ) -> requests.Response:
-    DEFAULT_RETRY_AFTER = 3
+    #
+    DEFAULT_RETRY_AFTER = 6
     failure_occurred = False
+
     for attempt in range(max_attempts):
         time.sleep(api_rate_limit_wait())
         try:
@@ -211,7 +220,7 @@ def send_request_with_retry(
             failure_occurred = True
             wait_time = 2 ** (attempt + 1)
             logger.warning(
-                f"\n{colored(f'Attempt {attempt+1}', 'light_red')} failed with error: {e}.\nRetrying in {wait_time} seconds...",
+                f"{colored(f'Attempt {attempt+1}', 'light_red')} failed with error: {e}.\nRetrying in {wait_time} seconds...",
             )
             # Custom warning message
             if attempt > 0 and isinstance(
@@ -226,7 +235,7 @@ def send_request_with_retry(
             time.sleep(wait_time)
             if attempt == max_attempts - 1:
                 logger.critical(
-                    colored("\nALL FAILED!", color="light_red", attrs=["bold"])
+                    colored("ALL FAILED!", color="light_red", attrs=["bold"])
                 )
                 try:
                     logger.critical(f"Response body: {response.text}")
@@ -237,7 +246,7 @@ def send_request_with_retry(
         else:
             if failure_occurred:
                 logger.warning(
-                    f"\n{colored(f'Attempt {attempt+1}', 'light_green')} was successful after {attempt} failed attempt{'s 'if attempt > 1 else ''}. The script will continue execution."
+                    f"{colored(f'Attempt {attempt+1}', 'light_green')} was successful after {attempt} failed attempt{'s 'if attempt > 1 else ''}."
                 )
             # Reset the failure flag for next function call
             failure_occurred = False
@@ -345,6 +354,7 @@ def send_data_to_xano(
     edit_endpoint_url,
     delete_endpoint_url,
     table_name,
+    update_summary: bool = True,
 ):
     if isinstance(data, pd.DataFrame):
         data = data.replace({np.nan: None})
@@ -363,16 +373,17 @@ def send_data_to_xano(
         headers=headers, get_all_endpoint_url=check_endpoint_url
     )
 
-    today = datetime.datetime.now().date()  # get the date part of the current datetime
+    yesterday = datetime.datetime.now().date() - timedelta(days=1)
 
     #
     # loop over existing entries for archive/delete
     for link, entry in existing_entries.items():
-        event_date_str = entry["entry"]["Date"].split("T")[0]
-        event_date = datetime.datetime.strptime(event_date_str, "%Y-%m-%d").date()
+        if entry["entry"]["Date"]:
+            event_date_str = entry["entry"]["Date"].split("T")[0]
+            event_date = datetime.datetime.strptime(event_date_str, "%Y-%m-%d").date()
 
         # Updating archived or deleting old events
-        if event_date < today:
+        if event_date < yesterday:
             current_event_id = entry["entry"]["id"]
             if (  # checks if user has bookmarked this past event
                 entry["entry"]["bookmark_users_id"] != [0]
@@ -406,6 +417,7 @@ def send_data_to_xano(
                 if current_event_id:
                     delete_url = delete_endpoint_url.format(id=current_event_id)
                     delete_param = {f"{table_name}_id": int(current_event_id)}
+                    time.sleep(api_rate_limit_wait())
                     response = send_request_with_retry(
                         delete_url,
                         "DELETE",
@@ -416,6 +428,11 @@ def send_data_to_xano(
                         f"    {colored('DELETED', color='light_magenta', attrs=['bold'])} ID {colored(current_event_id, 'magenta')} {link}"
                     )
                     # del existing_entries[link]  # delete the entry from existing_entries
+
+    # Create list of fields to ignore dynamically
+    ignored_fields = ["bookmark_users_id", "Highlights"]
+    if not update_summary:
+        ignored_fields.append("Summary")
 
     # loop over new data from df
     for i, row in enumerate(data):
@@ -457,12 +474,13 @@ def send_data_to_xano(
 
         # Skip events with a date in the past
         if "Date" in transformed_row:
-            event_date_str = transformed_row["Date"].split("T")[0]
-            event_date = datetime.datetime.strptime(
-                event_date_str, "%Y-%m-%d"
-            ).date()  # convert the date string to a date object
+            if transformed_row["Date"]:
+                event_date_str = transformed_row["Date"].split("T")[0]
+                event_date = datetime.datetime.strptime(
+                    event_date_str, "%Y-%m-%d"
+                ).date()  # convert the date string to a date object
 
-            if event_date < today:
+            if event_date < yesterday:
                 skip_entry_and_print(
                     row_index, current_event_id, transformed_row["Link"]
                 )
@@ -470,15 +488,11 @@ def send_data_to_xano(
 
         if current_event_id:
             if entries_are_equal(
-                {
-                    k: v
-                    for k, v in transformed_row.items()
-                    if k not in ["bookmark_users_id", "Highlights"]
-                },
+                {k: v for k, v in transformed_row.items() if k not in ignored_fields},
                 {
                     k: v
                     for k, v in existing_entries[link]["entry"].items()
-                    if k not in ["bookmark_users_id", "Highlights"]
+                    if k not in ignored_fields
                 },
             ):
                 skip_entry_and_print(

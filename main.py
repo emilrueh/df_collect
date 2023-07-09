@@ -1,37 +1,27 @@
-import logging
-from datetime import datetime
+from src.helper_utils import config_logger, main_logger_name
 
-# Logging Configuration #
-timestamp = datetime.now().strftime("%d%m%Y-%H%M%S")
+logger_name = main_logger_name
 
-c_handler = logging.StreamHandler()
-f_handler = logging.FileHandler(filename=f"logs\\runtime_{timestamp}.log", mode="a")
-c_format = logging.Formatter(
-    fmt="%(name)s - %(levelname)s - %(module)s @ %(lineno)4d ---> %(message)s",
-    datefmt="%d.%m.%Y %H:%M:%S",
+logger = config_logger(
+    logger_name,
+    lvl_console="info",
+    lvl_file="debug",
+    lvl_root="debug",
+    fmt_console="\n%(asctime)s - %(name)s - %(levelname)s - %(module)s @line %(lineno)3d\n%(message)s",
+    fmt_file="%(asctime)s - %(name)s - %(levelname)s - %(module)s @line %(lineno)3d ---> %(message)s",
+    fmt_date="%d.%m.%Y %H:%M:%S",
+    file_name="runtime",
+    file_timestamp="%d%m%Y-%H%M%S",
+    printing=True,
 )
-f_format = logging.Formatter(
-    fmt="%(asctime)s - %(name)s - %(levelname)s - %(module)s @ %(lineno)4d ---> %(message)s",
-    datefmt="%d.%m.%Y %H:%M:%S",
-)
-
-c_handler.setLevel(logging.WARNING)
-f_handler.setLevel(logging.DEBUG)
-c_handler.setFormatter(c_format)
-f_handler.setFormatter(f_format)
-
-logger = logging.getLogger("main_logger")
-logger.setLevel(logging.DEBUG)  # set root logger level
-logger.addHandler(c_handler)
-logger.addHandler(f_handler)
-# Logging Configuration #
 
 import time
 import traceback
 import sys
 from termcolor import colored
+import os
 
-from src.settings_scripts import load_settings
+from src.helper_utils import load_settings
 
 # event collection
 from src.eventbrite_scripts import get_all_events_info, create_eventbrite_object
@@ -41,30 +31,32 @@ from src.meetup_scripts import scrape_meetup
 from src.openai_scripts import openai_loop_over_column_and_add
 
 # data manipulation
-from src.data_scripts import (
+from src.data_utils import (
     create_df,
     flatten_data,
     delete_duplicates_add_keywords,
     manipulate_csv_data,
     map_keywords_to_categories,
+    load_from_csv,
+    json_read,
 )
 
 # send to db
 from src.xano_scripts import send_data_to_xano
 
 
-# main function calling functions
 def main():
     try:
-        # TIMING
         start_time = time.time()
         logger.info(f"Start time: {start_time}")
 
         # SETTINGS
-        settings = load_settings(
-            r"C:\Users\emilr\Code\PythonProjects\openaiapi\meetupsummary\data\settings_test.json"
-        )
-        # EVENTBRITE
+        settings_path = r"C:\Users\emilr\Code\PythonProjects\openaiapi\meetupsummary\data\settings.json"
+        logger.info(f"Loading settings from: {os.path.basename(settings_path)}")
+        settings = load_settings(settings_path, load_secrets=True)
+
+        # SCRAPER
+        # # EVENTBRITE
         eventbrite_return = get_all_events_info(
             eventbrite=create_eventbrite_object(
                 private_token=settings["EVENTBRITE_PRIVATE_TOKEN"]
@@ -79,14 +71,15 @@ def main():
             colored(f'Path to the output csv: {settings["PATH_TO_CSV"]}', "cyan")
         )
 
-        # MEETUP
+        # # MEETUP
         meetup_return = scrape_meetup(
             url=settings["MEETUP_URL"],
             keywords=settings["KEYWORDS"],
             event_entries=settings["MU_PAGINATION"],
         )
 
-        # JSON
+        # DATA
+        # # JSON
         flattened_meetup = flatten_data(meetup_return)
         flattened_eventbrite = flatten_data(eventbrite_return)
         full_events_return = flattened_eventbrite + flattened_meetup
@@ -95,26 +88,27 @@ def main():
         # creating df from json
         df = create_df(full_events_return)
 
-        # deleting duplicates and appending keywords
+        # # # deleting duplicates and appending keywords
         df = delete_duplicates_add_keywords(
             data=df,
             columns_to_compare=["Name", "Long_Description", "Date", "Price"],
         )
-        # operations
+        # # # df manipulation operations
         df = manipulate_csv_data(
             input_df=df,
             operations=settings["CSV_OPERATIONS"],
             output_filepath=settings["PATH_TO_CSV"],
             file_path=None,
         )
-        # creating catgories from keywords
+        # # # creating catgories from keywords
         df["Category"] = df["Keyword"].apply(
             lambda x: map_keywords_to_categories(x, settings["CATEGORIES"])
         )
-        # creating archived column
+        # # # creating archived column
         df["Archived"] = False
 
-        # OPENAI
+        # APIs
+        # # OPENAI
         df = openai_loop_over_column_and_add(
             api_key=settings["OPENAI_API_KEY"],
             prompt=settings["AI_PROMPT"],
@@ -127,7 +121,7 @@ def main():
             to_remove=['"'],
         )
 
-        # XANO
+        # # XANO
         xano_response = send_data_to_xano(
             data=df,
             api_key=settings["XANO_API_KEY"],
@@ -139,16 +133,12 @@ def main():
             table_name=settings["XANO_TABLE_NAME"],
         )
 
-        # TIMING
         end_time = time.time()
         logger.info(f"End: {end_time}")
-
-        execution_time = end_time - start_time
-
+        execution_time = round(end_time - start_time, 2)
         logger.info(
             colored(f"The script executed in {execution_time / 60} minutes.", "cyan")
         )
-    # # #
 
     except Exception as e:
         exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -158,13 +148,12 @@ def main():
         line_number = traceback_details[-1].lineno
         exc_type_name = exc_type.__name__
 
-        error_message = f"CRITICAL ERROR: {exc_type_name} at line: {line_number} in file: {fname}. Error message: {e}"
-        logger.critical(error_message)
+        logger.critical(f"{exc_type_name}: {e}")
 
-        view_traceback = input("Do you want to see the full error message? (y/n) ")
+        view_traceback = input("View full error? (y/n) ")
         if view_traceback.lower() == "y":
             error_traceback = (
-                f"Full error traceback: {traceback_details}, error message: {e}"
+                f"Error traceback: {traceback_details}\nError message: {e}"
             )
             logger.critical(error_traceback)
 
