@@ -12,7 +12,7 @@ logger = config_logger(
     fmt_date="%d.%m.%Y %H:%M:%S",
     file_name="runtime",
     file_timestamp="%d%m%Y-%H%M%S",
-    printing=True,
+    prints=True,
 )
 
 import time

@@ -32,7 +32,7 @@ def config_logger(
     fmt_date: str = "%Y-%m-%d %H:%M:%S:Ms",
     file_name: str = "runtime",
     file_timestamp: str = "%Y%m%d-%H%M%S",
-    printing: bool = False,
+    prints: bool = False,
 ) -> object:
     logger = logging.getLogger(name)
 
@@ -52,7 +52,7 @@ def config_logger(
         "fmt_date": fmt_date if fmt_date == "%Y-%m-%d %H:%M:%S:Ms" else None,
         "file_name": file_name if file_name == "runtime" else None,
         "file_timestamp": file_timestamp if file_timestamp == "%Y%m%d-%H%M%S" else None,
-        "printing": printing if printing == False else None,
+        "prints": prints if prints == False else None,
     }
 
     base_values = {key for key, value in base_values_dict.items() if value is not None}
@@ -111,9 +111,13 @@ def config_logger(
         print(f"Set the root level to {default_lvl_root}.")
         logger.setLevel(default_lvl_root.upper())
 
-    if printing:  # can get improved
-        print("Logging to console...")
-        print("Logging to file...")
+    if prints:  # can get improved
+        if lvl_console and lvl_file:
+            print("Logging to console and file...")
+        elif lvl_console:
+            print("Logging to console...")
+        elif lvl_file:
+            print("Logging to file...")
 
     return logger
 
